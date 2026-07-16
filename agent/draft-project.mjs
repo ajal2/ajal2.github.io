@@ -190,7 +190,15 @@ function openPr(slug, filePath, repo, readmeSha, model) {
 const rows = [];
 let failed = false;
 
-for (const repo of candidates()) {
+let repos;
+try {
+  repos = candidates();
+} catch (err) {
+  console.error(`discovery failed — GitHub API unreachable? ${String(err.message).split('\n')[0]}`);
+  process.exit(1);
+}
+
+for (const repo of repos) {
   const slug = repo.name.toLowerCase();
   const filePath = `${CONTENT_DIR}/${slug}.md`;
   try {
