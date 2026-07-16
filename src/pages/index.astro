@@ -1,0 +1,115 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Hero from '../components/Hero.astro';
+import Section from '../components/Section.astro';
+import ProjectRow from '../components/ProjectRow.astro';
+import { Content as Now, frontmatter as nowMeta } from '../content/now.md';
+
+const projects = (await getCollection('projects')).sort(
+  (a, b) =>
+    Number(b.data.featured) - Number(a.data.featured) ||
+    b.data.date.valueOf() - a.data.date.valueOf()
+);
+const experience = await getCollection('experience');
+const education = await getCollection('education');
+
+const nowUpdated = new Date(nowMeta.updated).toLocaleDateString('en-US', {
+  month: 'long',
+  year: 'numeric',
+});
+---
+
+<BaseLayout person>
+  <Hero />
+
+  <Section label="Projects" id="projects">
+    {projects.map((p) => <ProjectRow project={p} />)}
+  </Section>
+
+  <Section label="Experience" id="experience">
+    {experience.map((e) => (
+      <article class="xp">
+        <div class="xp-top">
+          <h3 class="xp-role">{e.data.role}</h3>
+          <span class="mono muted">{e.data.period}</span>
+        </div>
+        <p class="xp-org">
+          {e.data.url ? <a href={e.data.url}>{e.data.org}</a> : e.data.org}
+          {e.data.location && <span class="muted"> — {e.data.location}</span>}
+        </p>
+        {e.data.summary && <p class="muted xp-summary">{e.data.summary}</p>}
+        {e.data.highlights.length > 0 && (
+          <ul class="xp-highlights">
+            {e.data.highlights.map((h) => <li>{h}</li>)}
+          </ul>
+        )}
+      </article>
+    ))}
+  </Section>
+
+  <Section label="Education" id="education">
+    {education.map((ed) => (
+      <article class="xp">
+        <div class="xp-top">
+          <h3 class="xp-role">{ed.data.school}</h3>
+          <span class="mono muted">{ed.data.period}</span>
+        </div>
+        <p class="xp-org">{ed.data.degree}</p>
+        {ed.data.detail && <p class="muted xp-summary">{ed.data.detail}</p>}
+      </article>
+    ))}
+  </Section>
+
+  <Section label="Now" id="now" sub={nowUpdated}>
+    <div class="prose now">
+      <Now />
+    </div>
+  </Section>
+</BaseLayout>
+
+<style>
+  .xp + .xp {
+    margin-top: var(--space-row);
+  }
+
+  .xp-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+  }
+
+  .xp-role {
+    font-size: 1.05rem;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+
+  .xp-org {
+    margin-top: 0.15rem;
+  }
+
+  .xp-summary {
+    margin-top: 0.2rem;
+    max-width: 58ch;
+  }
+
+  .xp-highlights {
+    margin-top: 0.55rem;
+    padding-left: 1.15rem;
+    max-width: 60ch;
+  }
+
+  .xp-highlights li + li {
+    margin-top: 0.35rem;
+  }
+
+  .xp-highlights li::marker {
+    color: var(--madder);
+  }
+
+  .now {
+    max-width: 58ch;
+  }
+</style>

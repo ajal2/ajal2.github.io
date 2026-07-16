@@ -1,0 +1,24 @@
+---
+import site from '../data/site.json';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="footer">
+  <div class="page">
+    <ul class="danda-row mono muted">
+      <li>© {year} {site.name}</li>
+      <li><a href={site.github}>GitHub</a></li>
+      <li><a href={`mailto:${site.email}`}>Email</a></li>
+      <li>new projects land here as agent-drafted, human-approved PRs</li>
+    </ul>
+  </div>
+</footer>
+
+<style>
+  .footer {
+    margin-top: var(--space-section);
+    border-top: 1px solid var(--hairline);
+    padding-block: 1.4rem 3rem;
+  }
+</style>

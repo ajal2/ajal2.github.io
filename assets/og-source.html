@@ -1,0 +1,88 @@
+<!doctype html>
+<!-- Source for public/og.png. Render at exactly 1200×630:
+     "Google Chrome" -​-headless=new -​-screenshot=public/og.png -​-window-size=1200,630 file://$PWD/assets/og-source.html -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<style>
+  @font-face {
+    font-family: 'Mukta';
+    font-weight: 400;
+    src: url('../node_modules/@fontsource/mukta/files/mukta-latin-400-normal.woff2') format('woff2');
+  }
+  @font-face {
+    font-family: 'Mukta';
+    font-weight: 700;
+    src: url('../node_modules/@fontsource/mukta/files/mukta-latin-700-normal.woff2') format('woff2');
+    unicode-range: U+0000-024F;
+  }
+  @font-face {
+    font-family: 'Mukta Devanagari';
+    font-weight: 400;
+    src: url('../node_modules/@fontsource/mukta/files/mukta-devanagari-400-normal.woff2') format('woff2');
+  }
+  * { margin: 0; box-sizing: border-box; }
+  body {
+    width: 1200px;
+    height: 630px;
+    background: #fcfbf7;
+    color: #1f1d1a;
+    font-family: 'Mukta', sans-serif;
+    padding: 90px 96px 72px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow: hidden;
+  }
+  .name {
+    font-size: 84px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    line-height: 1.05;
+  }
+  .devanagari {
+    font-family: 'Mukta Devanagari', 'Noto Sans Devanagari', sans-serif;
+    font-size: 30px;
+    color: #6e675c;
+    margin-top: 14px;
+  }
+  .line {
+    font-size: 38px;
+    line-height: 1.4;
+    max-width: 21em;
+    margin-top: 48px;
+  }
+  .foot {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 22px;
+    color: #6e675c;
+  }
+  .danda { color: #a93226; font-family: 'Mukta Devanagari', sans-serif; }
+  .rule {
+    border: 0;
+    border-top: 2px solid #e8e4da;
+    margin: 0 0 28px;
+  }
+</style>
+</head>
+<body>
+  <div>
+    <div class="name">Aryan Jalota</div>
+    <div class="devanagari">आर्यन जलोटा</div>
+    <div class="line">I build AI agent systems — and the business cases they have to survive.</div>
+  </div>
+  <div>
+    <hr class="rule" />
+    <div class="foot">
+      <span>ajal2.github.io</span>
+      <span class="danda">।</span>
+      <span>Illinois Urbana-Champaign</span>
+      <span class="danda">।</span>
+      <span>New Delhi</span>
+    </div>
+  </div>
+</body>
+</html>

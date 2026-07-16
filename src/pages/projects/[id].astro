@@ -1,0 +1,94 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const projects = await getCollection('projects');
+  return projects.map((p) => ({ params: { id: p.id }, props: { project: p } }));
+}
+
+const { project } = Astro.props;
+const { Content } = await render(project);
+const d = project.data;
+---
+
+<BaseLayout title={`${d.title} — Aryan Jalota`} description={d.summary}>
+  <nav class="crumb mono">
+    <a href="/">← Aryan Jalota</a>
+  </nav>
+
+  <header class="proj-head">
+    <h1 class="proj-title">{d.title}</h1>
+    <p class="proj-summary">{d.summary}</p>
+    {d.outcome && <p class="proj-outcome">{d.outcome}</p>}
+    <ul class="danda-row mono muted proj-meta">
+      <li>{d.date.getFullYear()}</li>
+      <li>{d.status}</li>
+      {d.stack.map((s) => <li>{s}</li>)}
+    </ul>
+    <ul class="danda-row proj-links">
+      <li><a href={d.repo}>View on GitHub ↗</a></li>
+      {d.demo && <li><a href={d.demo}>Live ↗</a></li>}
+    </ul>
+  </header>
+
+  <div class="prose proj-body">
+    <Content />
+  </div>
+
+  {d.draftedBy === 'agent' && (
+    <p class="mono muted proj-note">
+      Drafted by this site's agent from the repo README । reviewed by a human before merge.
+    </p>
+  )}
+</BaseLayout>
+
+<style>
+  .crumb {
+    padding-top: 2.25rem;
+  }
+
+  .proj-head {
+    margin-top: 3rem;
+  }
+
+  .proj-title {
+    font-size: clamp(1.8rem, 5vw, 2.4rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+
+  .proj-summary {
+    font-size: 1.15rem;
+    line-height: 1.5;
+    margin-top: 0.9rem;
+    max-width: 48ch;
+    text-wrap: balance;
+  }
+
+  .proj-outcome {
+    font-weight: 500;
+    margin-top: 0.6rem;
+    max-width: 52ch;
+  }
+
+  .proj-meta {
+    margin-top: 1rem;
+  }
+
+  .proj-links {
+    margin-top: 1.4rem;
+    font-weight: 500;
+  }
+
+  .proj-body {
+    margin-top: 2.75rem;
+    border-top: 1px solid var(--hairline);
+    padding-top: 2rem;
+  }
+
+  .proj-note {
+    margin-top: 3rem;
+  }
+</style>

@@ -1,0 +1,69 @@
+---
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  project: CollectionEntry<'projects'>;
+}
+
+const { project } = Astro.props;
+const { title, summary, outcome, stack, repo, demo, status, featured, date } = project.data;
+---
+
+<article class:list={['row', { featured }]}>
+  <div class="row-top">
+    <h3 class="row-title"><a href={`/projects/${project.id}/`}>{title}</a></h3>
+    <ul class="danda-row mono muted row-side">
+      <li>{date.getFullYear()}</li>
+      {status === 'active' && <li>active</li>}
+    </ul>
+  </div>
+  <p class="row-summary">{summary}</p>
+  {outcome && <p class="row-outcome">{outcome}</p>}
+  <ul class="danda-row mono muted row-meta">
+    {stack.map((s) => <li>{s}</li>)}
+    <li><a href={repo}>GitHub ↗</a></li>
+    {demo && <li><a href={demo}>Live ↗</a></li>}
+  </ul>
+</article>
+
+<style>
+  .row + .row {
+    margin-top: var(--space-row);
+  }
+
+  .row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+  }
+
+  .row-title {
+    font-size: 1.1rem;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+
+  .featured .row-title {
+    font-size: 1.3rem;
+  }
+
+  .row-side {
+    flex-shrink: 0;
+  }
+
+  .row-summary {
+    margin-top: 0.35rem;
+    max-width: 58ch;
+  }
+
+  .row-outcome {
+    margin-top: 0.4rem;
+    font-weight: 500;
+    max-width: 58ch;
+  }
+
+  .row-meta {
+    margin-top: 0.6rem;
+  }
+</style>

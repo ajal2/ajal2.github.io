@@ -1,0 +1,22 @@
+{
+  "name": "ajal2.github.io",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.3",
+    "@fontsource/mukta": "^5.2.8",
+    "astro": "^7.1.0"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.111.0"
+  }
+}

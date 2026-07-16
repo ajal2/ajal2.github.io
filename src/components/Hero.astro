@@ -1,0 +1,60 @@
+---
+import site from '../data/site.json';
+
+const links = [
+  { label: 'GitHub', href: site.github },
+  site.linkedin ? { label: 'LinkedIn', href: site.linkedin } : null,
+  { label: 'Email', href: `mailto:${site.email}` },
+  site.resume ? { label: 'Résumé', href: '/resume.pdf' } : null,
+].filter((l) => l !== null);
+---
+
+<header class="hero">
+  <h1 class="hero-name">{site.name}</h1>
+  <p class="hero-devanagari" lang="hi">{site.devanagariName}</p>
+  <p class="hero-line">{site.oneLiner}</p>
+  <ul class="danda-row mono muted hero-meta">
+    {site.meta.map((m) => <li>{m}</li>)}
+  </ul>
+  <ul class="danda-row hero-links">
+    {links.map((l) => (
+      <li><a href={l.href}>{l.label}</a></li>
+    ))}
+  </ul>
+</header>
+
+<style>
+  .hero {
+    padding-block: clamp(3.25rem, 11vh, 5.5rem) 0;
+  }
+
+  .hero-name {
+    font-size: clamp(2.2rem, 7vw, 3.1rem);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    line-height: 1.1;
+  }
+
+  .hero-devanagari {
+    color: var(--muted);
+    font-size: 1.05rem;
+    margin-top: 0.4rem;
+  }
+
+  .hero-line {
+    font-size: clamp(1.15rem, 3vw, 1.3rem);
+    line-height: 1.45;
+    margin-top: 1.5rem;
+    max-width: 34ch;
+    text-wrap: balance;
+  }
+
+  .hero-meta {
+    margin-top: 1.1rem;
+  }
+
+  .hero-links {
+    margin-top: 1.7rem;
+    font-weight: 500;
+  }
+</style>
