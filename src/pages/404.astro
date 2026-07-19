@@ -12,8 +12,8 @@ import JournalShell from '../layouts/JournalShell.astro';
 
 <style>
   /* A typed slip, same stock as the note on the desk. */
-  .nf { background: #a8865a; color: #241c10; max-width: 400px; margin: 12vh auto 0; padding: 26px 28px 30px; transform: rotate(-2deg); box-shadow: -4px 8px 10px rgba(10, 6, 2, 0.4); font-weight: 700; }
-  .nf-code { margin: 0; font-size: 44px; letter-spacing: 4px; }
-  .nf-line { margin: 10px 0 18px; font-size: 13px; line-height: 1.6; }
-  .nf-back { color: #241c10; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+  .nf { background: var(--note); color: #241c10; max-width: 400px; margin: 12vh auto 0; padding: 26px 28px 30px; transform: rotate(-2deg); box-shadow: -4px 8px 10px rgba(10, 6, 2, 0.4); font-weight: 700; }
+  .nf-code { margin: 0; font-size: var(--text-hero); letter-spacing: 4px; }
+  .nf-line { margin: 10px 0 18px; font-size: var(--text-meta); line-height: 1.6; }
+  .nf-back { color: #241c10; font-size: var(--text-caption); text-decoration: underline; text-underline-offset: 3px; }
 </style>

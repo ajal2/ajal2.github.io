@@ -1,0 +1,108 @@
+/* =========================================================================
+   Design tokens — the single source of truth for color and type.
+   Imported once (via src/components/Head.astro), so every page inherits it.
+
+   Human/agent reference: agent/DESIGN_GUIDE.md explains the model and the
+   rules. The short version:
+   - Semantic UI (page, ink, accent, stamps, fonts, text sizes) uses these
+     tokens. New pages should too.
+   - The desk's skeuomorphic props (wood, mug, tape, folders, boarding
+     passes, paper shadows) keep their own literal material colors — they are
+     hand-made objects, not part of the system. Don't tokenize those.
+   ========================================================================= */
+
+:root {
+  /* --- Page surface: flips with theme -----------------------------------
+     Text and background of the page itself. The dark override lives on
+     body[data-theme='dark'] below, to match the theme toggle, which sets
+     document.body.dataset.theme (localStorage key 'aryan-theme2'). */
+  --page: #e9e6de;   /* page background */
+  --paper: #faf8f1;  /* raised paper sheet (cards, the JournalShell sheet) */
+  --ink: #24221c;    /* primary text on --page */
+  --sub: #6c675c;    /* secondary/muted text on --page */
+  --line: rgba(40, 36, 28, 0.2); /* hairlines, dashed rules */
+  --accent: #2b52b8; /* the one interactive accent: links, focus, selection,
+                        pushpins. Same blue in both themes. */
+  --note: #b8955f;   /* the tan "sticky note" stock */
+
+  /* Homepage desk surface (only index.astro uses these, kept here so every
+     themed value lives in one file). */
+  --desk: linear-gradient(112deg, #8a6a46, #78573a 55%, #66482c);
+  --lamp: rgba(255, 220, 170, 0.08);
+
+  /* --- Ink on paper: constant across themes -----------------------------
+     The desk's paper objects (prints, cards, the sheet) are cream in BOTH
+     themes, so ink printed on them does NOT flip. These are the semantic
+     versions of colors that used to leak as raw literals. */
+  --stamp: #8b8574;      /* the typewriter stamp / caption gray */
+  --stamp-red: #a32c22;  /* madder red: rubber stamps, DRAFT tags, ribbon */
+  --ink-title: #211f19;  /* near-black heading ink on paper objects */
+
+  /* --- Type: families ---------------------------------------------------
+     Fraunces (an editorial serif) is the site's voice — every heading and all
+     body prose. Courier is the second voice, confined to the desk's typed
+     artifacts (boarding passes, stamps, the slip, the to-do pad) and the small
+     stamp-style labels that annotate a filed document. Because everything
+     references these two tokens, the faces swap here without touching a page.
+     (--font-sans keeps its name for continuity though the face is a serif.) */
+  --font-sans: 'Fraunces Variable', Georgia, serif;
+  --font-mono: 'Courier Prime', monospace;
+
+  /* --- Type: scale ------------------------------------------------------
+     A named ladder for the semantic text roles. New UI should size from
+     these rather than inventing a px value. (The desk's tiny skeuomorphic
+     labels predate the scale and keep their own sizes.) */
+  --text-hero: clamp(30px, 5vw, 44px);      /* the 404 code, big moments */
+  --text-display: clamp(28px, 3.5vw, 38px); /* page H1 (The Files, story) */
+  --text-title: clamp(24px, 4vw, 32px);     /* a page/article title (project) */
+  --text-subtitle: clamp(19px, 2.2vw, 23px);/* section label within a page */
+  --text-lead: 18px;                        /* the one-line summary */
+  --text-body: 16px;                        /* running prose, bullets */
+  --text-meta: 13px;                        /* meta rows, small body */
+  --text-caption: 12px;                     /* captions, nav links */
+  --text-stamp: 10.5px;                     /* uppercase stamp/label voice */
+  --text-micro: 8.5px;                      /* the tiniest stamps */
+
+  /* --- Type: tracking ---------------------------------------------------
+     Positive on uppercase mono stamps, negative on large display sans. */
+  --track-tight: -0.5px; /* large display headings */
+  --track-wide: 1.5px;   /* labels */
+  --track-stamp: 2px;    /* uppercase stamps */
+}
+
+body[data-theme='dark'] {
+  --page: #16140f;
+  --paper: #efe9da;
+  --ink: #e8e5db;
+  --sub: #99948a;
+  --line: rgba(232, 229, 219, 0.16);
+  --note: #a8865a;
+  --desk: linear-gradient(112deg, #3e2e1e, #2f2214 55%, #241a0e);
+  --lamp: rgba(255, 190, 110, 0.17);
+  /* --accent, --stamp, --stamp-red, --ink-title stay constant by design. */
+}
+
+/* =========================================================================
+   Shared base styles — the reset + defaults every page relies on. Pages must
+   NOT re-declare body background/color/font; they inherit from here.
+   ========================================================================= */
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--page);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--ink); }
+a:hover { color: var(--accent); }
+::selection { background: var(--accent); color: #fff; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+html { scroll-behavior: smooth; }
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

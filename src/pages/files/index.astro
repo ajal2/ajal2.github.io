@@ -8,9 +8,6 @@
 // never depend on that.
 // Theme filter chips from the prototype were dropped along with the Notion
 // Themes column — overkill at this scale.
-import '@fontsource-variable/archivo/wdth.css';
-import '@fontsource/courier-prime';
-import '@fontsource/courier-prime/700.css';
 import { getCollection } from 'astro:content';
 import Head from '../../components/Head.astro';
 import JournalNav from '../../components/JournalNav.astro';
@@ -86,19 +83,12 @@ const studies = (await getCollection('stories', isPublished))
     </div>
 
     <style is:global>
-      /* Day is the default; night is the override (Aryan's call). */
-      body {
-        margin: 0; font-family: 'Archivo Variable', system-ui, sans-serif; background: var(--page); color: var(--ink); -webkit-font-smoothing: antialiased;
-        --page: #e9e6de; --paper: #faf8f1; --ink: #24221c; --sub: #6c675c; --accent: #2b52b8; --note: #b8955f; --line: rgba(40, 36, 28, 0.2);
-      }
-      body[data-theme='dark'] { --page: #16140f; --paper: #efe9da; --ink: #e8e5db; --sub: #99948a; --note: #a8865a; --line: rgba(232, 229, 219, 0.16); }
-      ::selection { background: var(--accent); color: #fff; }
+      /* Palette, fonts, and base styles come from src/styles/tokens.css (via Head). */
       @keyframes desk-land { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; } }
-      @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
 
       .cs-wrap { max-width: 1420px; margin: 0 auto; padding: 88px 40px 110px; }
-      .cs-h1 { margin: 0; font-size: clamp(28px, 3.2vw, 38px); line-height: 1; font-weight: 900; font-stretch: 115%; letter-spacing: -0.8px; color: var(--ink); }
-      .cs-empty { margin-top: 40px; font-family: 'Courier Prime', monospace; font-size: 13px; color: var(--sub); }
+      .cs-h1 { margin: 0; font-size: var(--text-display); line-height: 1; font-weight: 900; letter-spacing: -0.8px; color: var(--ink); }
+      .cs-empty { margin-top: 40px; font-family: var(--font-mono); font-size: var(--text-meta); color: var(--sub); }
 
       .cs-grid { margin-top: 40px; display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 44px 36px; align-items: start; }
       @media (max-width: 420px) { .cs-grid { grid-template-columns: 1fr; } .cs-wrap { padding: 76px 20px 90px; } }
@@ -110,17 +100,17 @@ const studies = (await getCollection('stories', isPublished))
       .cs-tapeL { left: -16px; transform: rotate(-42deg); }
       .cs-tapeR { right: -16px; transform: rotate(42deg); }
       .cs-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; margin-bottom: 9px; }
-      .cs-stamp { font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 9.5px; letter-spacing: 1.8px; color: #8b8574; white-space: nowrap; }
-      .cs-tagline { font-family: 'Courier Prime', monospace; font-size: 8px; letter-spacing: 1.2px; color: #a29a86; text-align: right; }
-      .cs-draft { color: #a32c22; }
+      .cs-stamp { font-family: var(--font-mono); font-weight: 700; font-size: 9.5px; letter-spacing: 1.8px; color: var(--stamp); white-space: nowrap; }
+      .cs-tagline { font-family: var(--font-mono); font-size: 8px; letter-spacing: 1.2px; color: #a29a86; text-align: right; }
+      .cs-draft { color: var(--stamp-red); }
       .cs-photo { width: 100%; height: 210px; overflow: hidden; background: #c9c4b5; }
       .cs-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
       .cs-nophoto { width: 100%; height: 210px; box-sizing: border-box; background: linear-gradient(160deg, #d9bd86, #cbae74); padding: 16px 15px; display: flex; flex-direction: column; justify-content: space-between; }
-      .cs-nophoto-note { font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 12.5px; line-height: 1.55; color: #3a2d17; }
-      .cs-nophoto-label { font-family: 'Courier Prime', monospace; font-size: 7.5px; letter-spacing: 2px; color: #7a6238; }
-      .cs-name { margin: 11px 0 0; font-size: 16.5px; line-height: 1.3; font-weight: 800; font-stretch: 108%; letter-spacing: -0.2px; color: #211f19; }
-      .cs-note { margin: 10px 0 0; background: rgba(200, 172, 117, 0.28); padding: 8px 10px; font-family: 'Courier Prime', monospace; font-size: 10.5px; line-height: 1.5; color: #4a4032; }
-      .cs-meta { margin: 10px 0 0; font-family: 'Courier Prime', monospace; font-size: 9.5px; letter-spacing: 1px; color: #8b8574; }
+      .cs-nophoto-note { font-family: var(--font-mono); font-weight: 700; font-size: 12.5px; line-height: 1.55; color: #3a2d17; }
+      .cs-nophoto-label { font-family: var(--font-mono); font-size: 7.5px; letter-spacing: 2px; color: #7a6238; }
+      .cs-name { margin: 11px 0 0; font-size: 16.5px; line-height: 1.3; font-weight: 800; letter-spacing: -0.2px; color: var(--ink-title); }
+      .cs-note { margin: 10px 0 0; background: rgba(200, 172, 117, 0.28); padding: 8px 10px; font-family: var(--font-mono); font-size: 10.5px; line-height: 1.5; color: #4a4032; }
+      .cs-meta { margin: 10px 0 0; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1px; color: var(--stamp); }
     </style>
   </body>
 </html>

@@ -1,4 +1,12 @@
 ---
+// Head is the one component every route funnels through (standalone pages
+// include it directly; JournalShell includes it for 404 + project pages), so
+// the site's fonts and design tokens are imported here exactly once and reach
+// every page. Don't re-import these anywhere else.
+import '@fontsource-variable/fraunces';
+import '@fontsource/courier-prime';
+import '@fontsource/courier-prime/700.css';
+import '../styles/tokens.css';
 import site from '../data/site.json';
 
 interface Props {

@@ -46,9 +46,9 @@ const { active, themeToggle = false } = Astro.props;
   .jn-brand { font-weight: 600; font-size: 14px; letter-spacing: 0.2px; color: #ece8dc; text-decoration: none; }
   .jn-links { display: flex; align-items: center; gap: 18px; flex: 1; }
   .jn-links a { font-size: 12.5px; color: #a8a396; text-decoration: none; }
-  .jn-links a:hover { color: var(--accent, #2b52b8); }
-  .jn-links a.jn-active { color: #ece8dc; border-bottom: 2px solid var(--accent, #2b52b8); padding-bottom: 2px; }
-  .jn-theme { background: none; border: 1px solid rgba(232, 224, 202, 0.3); color: #c9c2ae; font-family: 'Courier Prime', monospace; font-size: 9.5px; letter-spacing: 2px; padding: 6px 12px; cursor: pointer; }
-  .jn-theme:hover { border-color: var(--accent, #2b52b8); color: #ece8dc; }
-  .jn-brand:focus-visible, .jn-links a:focus-visible, .jn-theme:focus-visible { outline: 2px solid #2b52b8; outline-offset: 3px; }
+  .jn-links a:hover { color: var(--accent); }
+  .jn-links a.jn-active { color: #ece8dc; border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
+  .jn-theme { background: none; border: 1px solid rgba(232, 224, 202, 0.3); color: #c9c2ae; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: var(--track-stamp); padding: 6px 12px; cursor: pointer; }
+  .jn-theme:hover { border-color: var(--accent); color: #ece8dc; }
+  .jn-brand:focus-visible, .jn-links a:focus-visible, .jn-theme:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 </style>

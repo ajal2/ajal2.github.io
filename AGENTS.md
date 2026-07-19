@@ -8,6 +8,18 @@ astro dev --background
 
 Manage the background server with `astro dev stop`, `astro dev status`, and `astro dev logs`.
 
+## Building pages
+
+Before adding or restyling a page, read the two contracts that keep the site
+coherent — they apply to human- and agent-written pages alike:
+
+- [agent/DESIGN_GUIDE.md](agent/DESIGN_GUIDE.md) — the visual system: the color
+  palette, the two fonts and the type scale, the theme model, and when to use a
+  token vs a literal. The machine source is `src/styles/tokens.css`, imported
+  once via `src/components/Head.astro` (never re-import fonts or tokens).
+- [agent/STYLE_GUIDE.md](agent/STYLE_GUIDE.md) — the writing voice for project
+  pages (outcome-led, concrete, banned words).
+
 ## Documentation
 
 Full documentation: https://docs.astro.build
