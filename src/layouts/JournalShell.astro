@@ -1,0 +1,42 @@
+---
+// Interim shell for inner pages: the field-journal palette and type on a
+// quiet paper sheet. Deliberately unambitious — the real case-study design
+// arrives as Aryan's next Claude Design handoff and replaces the innards.
+import '@fontsource-variable/archivo/wdth.css';
+import '@fontsource/courier-prime';
+import '@fontsource/courier-prime/700.css';
+import Head from '../components/Head.astro';
+import JournalNav from '../components/JournalNav.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+  person?: boolean;
+}
+const { title, description, person } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <Head {title} {description} {person} />
+  </head>
+  <body>
+    <JournalNav />
+    <main class="js-page">
+      <slot />
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  body { margin: 0; font-family: 'Archivo Variable', system-ui, sans-serif; background: #16140f; color: #24221c; -webkit-font-smoothing: antialiased; }
+  .js-page { max-width: 780px; margin: 0 auto; padding: 92px 20px 120px; }
+  .js-sheet { background: #f6f3ea; padding: clamp(28px, 6vw, 54px); box-shadow: -4px 8px 10px rgba(10, 6, 2, 0.4), -10px 24px 40px rgba(10, 6, 2, 0.3); }
+  .js-mono { font-family: 'Courier Prime', monospace; }
+  .js-crumb { display: inline-block; margin: 0 0 18px; font-family: 'Courier Prime', monospace; font-size: 11.5px; letter-spacing: 1.5px; color: #a8a396; text-decoration: none; }
+  .js-crumb:hover { color: #2b52b8; }
+  ::selection { background: #2b52b8; color: #fff; }
+  a:focus-visible { outline: 2px solid #2b52b8; outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>

@@ -1,0 +1,61 @@
+name: Stories sync
+
+# Mirrors Filed stories from the Notion "Filing Cabinet" into the repo and
+# redeploys the site when anything changed. No AI in this path — flip a row
+# to Filed in Notion and it ships on the next run (or run this manually from
+# the Actions tab for an instant publish).
+on:
+  schedule:
+    - cron: '43 2,14 * * *' # twice daily; odd minute — top-of-hour crons are delayed/dropped
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Validate against Notion but do not write, commit, or deploy'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  actions: write # to dispatch deploy.yml (bot pushes do not fire push triggers)
+
+concurrency:
+  group: stories-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Sync stories from Notion
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: node agent/sync-stories.mjs ${{ inputs.dry_run == true && '--dry-run' || '' }}
+
+      - name: Validate the site still builds
+        if: ${{ inputs.dry_run != true }}
+        run: npx astro build
+
+      - name: Commit and deploy if changed
+        if: ${{ inputs.dry_run != true }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/content/stories public/photos/stories
+          if git diff --cached --quiet; then
+            echo "No story changes."
+            exit 0
+          fi
+          git commit -m "stories: sync from Notion"
+          git push
+          gh workflow run deploy.yml

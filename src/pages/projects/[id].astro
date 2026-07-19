@@ -1,6 +1,6 @@
 ---
 import { getCollection, render } from 'astro:content';
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import JournalShell from '../../layouts/JournalShell.astro';
 
 export async function getStaticPaths() {
   const projects = await getCollection('projects');
@@ -10,85 +10,45 @@ export async function getStaticPaths() {
 const { project } = Astro.props;
 const { Content } = await render(project);
 const d = project.data;
+const meta = [String(d.date.getFullYear()), d.status, ...d.stack].join(' · ');
 ---
 
-<BaseLayout title={`${d.title} — Aryan Jalota`} description={d.summary}>
-  <nav class="crumb mono">
-    <a href="/">← Aryan Jalota</a>
-  </nav>
+<JournalShell title={`${d.title} — Aryan Jalota`} description={d.summary}>
+  <a class="js-crumb" href="/">← THE DESK</a>
 
-  <header class="proj-head">
-    <h1 class="proj-title">{d.title}</h1>
-    <p class="proj-summary">{d.summary}</p>
-    {d.outcome && <p class="proj-outcome">{d.outcome}</p>}
-    <ul class="danda-row mono muted proj-meta">
-      <li>{d.date.getFullYear()}</li>
-      <li>{d.status}</li>
-      {d.stack.map((s) => <li>{s}</li>)}
-    </ul>
-    <ul class="danda-row proj-links">
-      <li><a href={d.repo}>View on GitHub ↗</a></li>
-      {d.demo && <li><a href={d.demo}>Live ↗</a></li>}
-    </ul>
-  </header>
+  <article class="js-sheet pj">
+    <header>
+      <p class="pj-meta js-mono">{meta}</p>
+      <h1 class="pj-title">{d.title}</h1>
+      <p class="pj-summary">{d.summary}</p>
+      {d.outcome && <p class="pj-outcome">{d.outcome}</p>}
+      <p class="pj-links js-mono">
+        <a href={d.repo}>View on GitHub ↗</a>
+        {d.demo && <a href={d.demo}>Live ↗</a>}
+      </p>
+    </header>
 
-  <div class="prose proj-body">
-    <Content />
-  </div>
+    <div class="pj-body">
+      <Content />
+    </div>
 
-  {d.draftedBy === 'agent' && (
-    <p class="mono muted proj-note">
-      Drafted by this site's agent from the repo README । reviewed by a human before merge.
-    </p>
-  )}
-</BaseLayout>
+    {d.draftedBy === 'agent' && (
+      <p class="pj-note js-mono">Drafted by this site's agent from the repo README — reviewed by a human before merge.</p>
+    )}
+  </article>
+</JournalShell>
 
 <style>
-  .crumb {
-    padding-top: 2.25rem;
-  }
-
-  .proj-head {
-    margin-top: 3rem;
-  }
-
-  .proj-title {
-    font-size: clamp(1.8rem, 5vw, 2.4rem);
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    line-height: 1.15;
-  }
-
-  .proj-summary {
-    font-size: 1.15rem;
-    line-height: 1.5;
-    margin-top: 0.9rem;
-    max-width: 48ch;
-    text-wrap: balance;
-  }
-
-  .proj-outcome {
-    font-weight: 500;
-    margin-top: 0.6rem;
-    max-width: 52ch;
-  }
-
-  .proj-meta {
-    margin-top: 1rem;
-  }
-
-  .proj-links {
-    margin-top: 1.4rem;
-    font-weight: 500;
-  }
-
-  .proj-body {
-    margin-top: 2.75rem;
-    border-top: 1px solid var(--hairline);
-    padding-top: 2rem;
-  }
-
-  .proj-note {
-    margin-top: 3rem;
-  }
+  .pj-meta { margin: 0; font-size: 10.5px; letter-spacing: 1.5px; text-transform: uppercase; color: #8b8574; }
+  .pj-title { margin: 10px 0 0; font-size: clamp(24px, 5vw, 32px); font-weight: 900; font-stretch: 112%; letter-spacing: -0.5px; line-height: 1.12; color: #211f19; }
+  .pj-summary { margin: 14px 0 0; font-size: 16px; line-height: 1.5; color: #33302a; max-width: 52ch; }
+  .pj-outcome { margin: 10px 0 0; font-weight: 600; color: #211f19; max-width: 52ch; }
+  .pj-links { margin: 18px 0 0; font-size: 12px; display: flex; gap: 18px; }
+  .pj-links a { color: #2b52b8; text-decoration: underline; text-underline-offset: 3px; }
+  .pj-body { margin-top: 28px; border-top: 1px solid #ddd6c4; padding-top: 22px; font-size: 15px; line-height: 1.65; color: #33302a; }
+  .pj-body :global(p) { margin: 0 0 14px; }
+  .pj-body :global(h2), .pj-body :global(h3) { margin: 26px 0 10px; font-family: 'Courier Prime', monospace; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #8b8574; border-bottom: 1px solid #ddd6c4; padding-bottom: 6px; }
+  .pj-body :global(ul) { padding-left: 20px; margin: 0 0 14px; }
+  .pj-body :global(code) { font-family: 'Courier Prime', monospace; font-size: 0.92em; }
+  .pj-note { margin: 30px 0 0; font-size: 11px; letter-spacing: 0.5px; color: #8b8574; }
 </style>

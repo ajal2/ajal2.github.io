@@ -1,34 +1,19 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
+import JournalShell from '../layouts/JournalShell.astro';
 ---
 
-<BaseLayout title="Page not found — Aryan Jalota">
-  <div class="nf">
-    <p class="nf-code" aria-hidden="true">४०४</p>
-    <h1 class="nf-title">Page not found</h1>
-    <p>That's 404 in Devanagari numerals. <a href="/">Back to the front page</a>.</p>
+<JournalShell title="File not found — Aryan Jalota">
+  <div class="nf js-mono">
+    <p class="nf-code">404</p>
+    <p class="nf-line">FILE NOT FOUND. Either it was never written, or it was never filed.</p>
+    <a class="nf-back" href="/">← back to the desk</a>
   </div>
-</BaseLayout>
+</JournalShell>
 
 <style>
-  .nf {
-    padding-top: clamp(4rem, 18vh, 8rem);
-  }
-
-  .nf-code {
-    font-size: clamp(3.5rem, 12vw, 5.5rem);
-    font-weight: 700;
-    color: var(--madder);
-    line-height: 1;
-  }
-
-  .nf-title {
-    font-size: 1.3rem;
-    font-weight: 700;
-    margin-top: 1rem;
-  }
-
-  .nf p:last-child {
-    margin-top: 0.5rem;
-  }
+  /* A typed slip, same stock as the note on the desk. */
+  .nf { background: #a8865a; color: #241c10; max-width: 400px; margin: 12vh auto 0; padding: 26px 28px 30px; transform: rotate(-2deg); box-shadow: -4px 8px 10px rgba(10, 6, 2, 0.4); font-weight: 700; }
+  .nf-code { margin: 0; font-size: 44px; letter-spacing: 4px; }
+  .nf-line { margin: 10px 0 18px; font-size: 13px; line-height: 1.6; }
+  .nf-back { color: #241c10; font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
 </style>

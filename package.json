@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",
-    "@fontsource/mukta": "^5.2.8",
+    "@fontsource-variable/archivo": "^5.2.8",
+    "@fontsource/courier-prime": "^5.2.8",
     "astro": "^7.1.0"
   },
   "devDependencies": {

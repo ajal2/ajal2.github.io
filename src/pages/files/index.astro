@@ -1,0 +1,126 @@
+---
+// The Files — the story index, ported from the Claude Design handoff
+// (design_handoff_case_studies/Case Studies - Index.dc.html).
+// This page is the inside of the homepage's THE FILES folder: every Filed
+// story appears, tagged on its card. Membership is pure data — file a story
+// in Notion and it lands here on the next sync. It's also the guaranteed
+// route into every story: desk prints flip open too, but this page must
+// never depend on that.
+// Theme filter chips from the prototype were dropped along with the Notion
+// Themes column — overkill at this scale.
+import '@fontsource-variable/archivo/wdth.css';
+import '@fontsource/courier-prime';
+import '@fontsource/courier-prime/700.css';
+import { getCollection } from 'astro:content';
+import Head from '../../components/Head.astro';
+import JournalNav from '../../components/JournalNav.astro';
+import { parseStoryBody } from '../../lib/story-body.mjs';
+import { isPublished } from '../../lib/stories.mjs';
+
+// Drafts appear in local dev for preview; the published build is Filed-only.
+const ROTS = [-1.1, 0.9, -0.6, 1.2, -0.4, 0.7];
+const studies = (await getCollection('stories', isPublished))
+  .sort((a, b) => b.data.periodStart.valueOf() - a.data.periodStart.valueOf())
+  .map((s, i) => {
+    const d = s.data;
+    const { summary } = parseStoryBody(s.body);
+    return {
+      ...d,
+      // The manila block needs typed words: the note, or the story's own
+      // summary line, or an honest placeholder for unwritten drafts.
+      // (|| not ?? — the parser returns '' for missing summaries.)
+      noteText: d.typedNote || summary || '…file being written.',
+      tagLine: d.tags.join(' / ').toUpperCase(),
+      meta: [d.org, `’${String(d.periodStart.getUTCFullYear()).slice(2)}`].filter(Boolean).join(' · '),
+      rot: ROTS[i % ROTS.length],
+      delay: (0.05 + (i % 6) * 0.06).toFixed(2),
+    };
+  });
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <Head
+      title="The Files — Aryan Jalota"
+      description="Every story, filed: engagements, projects, and field notes — the problem, what I did, what it was worth."
+    />
+  </head>
+  <body>
+    <JournalNav active="files" themeToggle />
+
+    <div class="cs-wrap">
+      <h1 class="cs-h1">THE FILES</h1>
+
+      {studies.length === 0 && (
+        <p class="cs-empty">Nothing filed yet. The cabinet is being organized — check back soon.</p>
+      )}
+
+      <div class="cs-grid">
+        {studies.map((c) => (
+          <a
+            class="cs-card"
+            href={`/stories/${c.slug}/`}
+            style={`transform:rotate(${c.rot}deg);animation-delay:${c.delay}s`}
+          >
+            <div class="cs-tapeL"></div>
+            <div class="cs-tapeR"></div>
+            <div class="cs-top">
+              <span class="cs-stamp">{c.stamp}</span>
+              <span class="cs-tagline">{c.tagLine}{c.status !== 'Filed' && <b class="cs-draft"> · DRAFT</b>}</span>
+            </div>
+            {c.photo ? (
+              <div class="cs-photo"><img src={c.photo} alt={c.printCaption ?? c.name} loading="lazy" /></div>
+            ) : (
+              <div class="cs-nophoto">
+                <div class="cs-nophoto-note">“{c.noteText}”</div>
+                <div class="cs-nophoto-label">NO PHOTOGRAPH ON FILE</div>
+              </div>
+            )}
+            <h2 class="cs-name">{c.name}</h2>
+            {c.photo && <div class="cs-note">“{c.noteText}”</div>}
+            <div class="cs-meta">{c.meta}</div>
+          </a>
+        ))}
+      </div>
+    </div>
+
+    <style is:global>
+      /* Day is the default; night is the override (Aryan's call). */
+      body {
+        margin: 0; font-family: 'Archivo Variable', system-ui, sans-serif; background: var(--page); color: var(--ink); -webkit-font-smoothing: antialiased;
+        --page: #e9e6de; --paper: #faf8f1; --ink: #24221c; --sub: #6c675c; --accent: #2b52b8; --note: #b8955f; --line: rgba(40, 36, 28, 0.2);
+      }
+      body[data-theme='dark'] { --page: #16140f; --paper: #efe9da; --ink: #e8e5db; --sub: #99948a; --note: #a8865a; --line: rgba(232, 229, 219, 0.16); }
+      ::selection { background: var(--accent); color: #fff; }
+      @keyframes desk-land { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; } }
+      @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+
+      .cs-wrap { max-width: 1420px; margin: 0 auto; padding: 88px 40px 110px; }
+      .cs-h1 { margin: 0; font-size: clamp(28px, 3.2vw, 38px); line-height: 1; font-weight: 900; font-stretch: 115%; letter-spacing: -0.8px; color: var(--ink); }
+      .cs-empty { margin-top: 40px; font-family: 'Courier Prime', monospace; font-size: 13px; color: var(--sub); }
+
+      .cs-grid { margin-top: 40px; display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 44px 36px; align-items: start; }
+      @media (max-width: 420px) { .cs-grid { grid-template-columns: 1fr; } .cs-wrap { padding: 76px 20px 90px; } }
+
+      .cs-card { position: relative; display: block; text-decoration: none; background: linear-gradient(145deg, #f7f5ee 70%, #eae6d9); padding: 13px 13px 15px; box-shadow: -4px 8px 10px rgba(10, 6, 2, 0.42), -10px 24px 38px rgba(10, 6, 2, 0.3); transition: transform 0.22s ease; animation: desk-land 0.55s cubic-bezier(0.22, 0.8, 0.32, 1) both; }
+      .cs-card:hover { transform: rotate(0deg) translateY(-9px) !important; }
+      .cs-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+      .cs-tapeL, .cs-tapeR { position: absolute; top: -9px; width: 60px; height: 19px; background: rgba(232, 224, 202, 0.6); box-shadow: -1px 2px 3px rgba(10, 6, 2, 0.25); pointer-events: none; }
+      .cs-tapeL { left: -16px; transform: rotate(-42deg); }
+      .cs-tapeR { right: -16px; transform: rotate(42deg); }
+      .cs-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; margin-bottom: 9px; }
+      .cs-stamp { font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 9.5px; letter-spacing: 1.8px; color: #8b8574; white-space: nowrap; }
+      .cs-tagline { font-family: 'Courier Prime', monospace; font-size: 8px; letter-spacing: 1.2px; color: #a29a86; text-align: right; }
+      .cs-draft { color: #a32c22; }
+      .cs-photo { width: 100%; height: 210px; overflow: hidden; background: #c9c4b5; }
+      .cs-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .cs-nophoto { width: 100%; height: 210px; box-sizing: border-box; background: linear-gradient(160deg, #d9bd86, #cbae74); padding: 16px 15px; display: flex; flex-direction: column; justify-content: space-between; }
+      .cs-nophoto-note { font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 12.5px; line-height: 1.55; color: #3a2d17; }
+      .cs-nophoto-label { font-family: 'Courier Prime', monospace; font-size: 7.5px; letter-spacing: 2px; color: #7a6238; }
+      .cs-name { margin: 11px 0 0; font-size: 16.5px; line-height: 1.3; font-weight: 800; font-stretch: 108%; letter-spacing: -0.2px; color: #211f19; }
+      .cs-note { margin: 10px 0 0; background: rgba(200, 172, 117, 0.28); padding: 8px 10px; font-family: 'Courier Prime', monospace; font-size: 10.5px; line-height: 1.5; color: #4a4032; }
+      .cs-meta { margin: 10px 0 0; font-family: 'Courier Prime', monospace; font-size: 9.5px; letter-spacing: 1px; color: #8b8574; }
+    </style>
+  </body>
+</html>

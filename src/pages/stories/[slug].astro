@@ -1,0 +1,241 @@
+---
+// One template renders every story — ported from the Claude Design handoff
+// (design_handoff_case_studies/Case Study - Detail.dc.html): a sticky
+// dossier rail (stamp, meta, taped photo, typed note) beside the memo
+// (summary → four parts, EXHIBIT A interrupting after "What I did",
+// EXHIBIT B after the last part; prose bodies get all exhibits at the end).
+// Drafts render in local dev for preview; the published build is Filed-only.
+import '@fontsource-variable/archivo/wdth.css';
+import '@fontsource/courier-prime';
+import '@fontsource/courier-prime/700.css';
+import { getCollection } from 'astro:content';
+import Head from '../../components/Head.astro';
+import JournalNav from '../../components/JournalNav.astro';
+import { parseStoryBody, formatPeriod } from '../../lib/story-body.mjs';
+import { isPublished } from '../../lib/stories.mjs';
+
+export async function getStaticPaths() {
+  const stories = await getCollection('stories', isPublished);
+  return stories.map((story) => ({
+    params: { slug: story.data.slug },
+    props: { story, stories },
+  }));
+}
+
+const { story, stories } = Astro.props;
+const d = story.data;
+const { summary, parts, prose } = parseStoryBody(story.body);
+
+const metaRows = [
+  { label: 'FILED BY', value: d.org },
+  { label: 'PERIOD', value: formatPeriod(d.periodStart, d.periodEnd) },
+  { label: 'FILED UNDER', value: d.tags.join(' · ') },
+].filter((r) => r.value);
+
+const proofs = [
+  { src: d.proof1, caption: d.proof1Caption },
+  { src: d.proof2, caption: d.proof2Caption },
+]
+  .filter((p) => p.src)
+  .map((p, i) => ({ ...p, letter: 'AB'[i] }));
+
+// Structured bodies: EXHIBIT A interrupts the memo after part 2; the rest
+// land after the last part. Prose bodies: everything after the text.
+const structured = parts.length > 0;
+const partsA = structured ? parts.slice(0, 2) : [];
+const partsB = structured ? parts.slice(2) : [];
+const midProof = structured ? proofs[0] : undefined;
+const endProofs = structured ? proofs.slice(1) : proofs;
+
+// The Notion relation is one-way; resolve both directions so linking
+// child→parent once cross-references both pages.
+const related = stories
+  .filter(
+    (s) =>
+      s.data.slug !== d.slug &&
+      (d.related.includes(s.data.slug) || s.data.related.includes(d.slug))
+  )
+  .map((s, i) => ({
+    slug: s.data.slug,
+    stamp: s.data.stamp,
+    name: s.data.name,
+    meta: [s.data.org, s.data.tags[0]?.toUpperCase()].filter(Boolean).join(' · '),
+    rot: i % 2 ? 1 : -1.2,
+  }));
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <Head title={`${d.name} — Aryan Jalota`} description={d.typedNote || summary || undefined} />
+  </head>
+  <body>
+    <JournalNav active="files" themeToggle />
+
+    <div class="st-wrap">
+      <a class="st-crumb" href="/files/">← BACK TO THE FILES</a>
+
+      <div class="st-cols">
+        <!-- dossier rail -->
+        <aside class="st-rail">
+          <div class="st-rail-card">
+            <div class="st-rail-tape"></div>
+            <div class="st-stamp">{d.stamp}</div>
+            {d.status !== 'Filed' && <div class="st-stamp st-stamp-draft">DRAFT — NOT FILED</div>}
+            <div class="st-meta">
+              {metaRows.map((r) => (
+                <div>
+                  <div class="st-meta-label">{r.label}</div>
+                  <div class="st-meta-value">{r.value}</div>
+                </div>
+              ))}
+            </div>
+            {d.photo && (
+              <div class="st-print">
+                <div class="st-print-img"><img src={d.photo} alt={d.printCaption ?? d.name} loading="lazy" /></div>
+                <div class="st-print-cap">{d.stamp}</div>
+              </div>
+            )}
+            {d.typedNote && <div class="st-slip">“{d.typedNote}”</div>}
+          </div>
+        </aside>
+
+        <!-- the story -->
+        <article class="st-story">
+          <h1 class="st-h1">{d.name}</h1>
+          <div class="st-rule"></div>
+          {summary && <p class="st-summary">{summary}</p>}
+
+          {partsA.map((p) => (
+            <div class="st-part">
+              <div class="st-part-label">{p.label}</div>
+              <div class="st-bullets">
+                {p.bullets.map((b) => (
+                  <div class="st-bullet"><span>—</span><span>{b}</span></div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {midProof && (
+            <figure class="st-exhibit" style="transform:rotate(.4deg)">
+              <div class="st-exhibit-head">
+                <span class="st-exhibit-label">EXHIBIT {midProof.letter}</span>
+                <span class="st-exhibit-stamp">{d.stamp}</span>
+              </div>
+              <div class="st-exhibit-img"><img src={midProof.src} alt={midProof.caption} loading="lazy" /></div>
+              <figcaption class="st-exhibit-cap">{midProof.caption}</figcaption>
+            </figure>
+          )}
+
+          {partsB.map((p) => (
+            <div class="st-part">
+              <div class="st-part-label">{p.label}</div>
+              <div class="st-bullets">
+                {p.bullets.map((b) => (
+                  <div class="st-bullet"><span>—</span><span>{b}</span></div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {prose.map((para) => <p class="st-prose">{para}</p>)}
+
+          {endProofs.map((ex) => (
+            <figure class="st-exhibit" style="transform:rotate(-.4deg)">
+              <div class="st-exhibit-head">
+                <span class="st-exhibit-label">EXHIBIT {ex.letter}</span>
+                <span class="st-exhibit-stamp">{d.stamp}</span>
+              </div>
+              <div class="st-exhibit-img"><img src={ex.src} alt={ex.caption} loading="lazy" /></div>
+              <figcaption class="st-exhibit-cap">{ex.caption}</figcaption>
+            </figure>
+          ))}
+
+          {related.length > 0 && (
+            <div class="st-xref">
+              <div class="st-xref-label">CROSS-REFERENCED →</div>
+              <div class="st-xref-cards">
+                {related.map((rc) => (
+                  <a class="st-xref-card" href={`/stories/${rc.slug}/`} style={`transform:rotate(${rc.rot}deg)`}>
+                    <div class="st-xref-stamp">{rc.stamp}</div>
+                    <div class="st-xref-name">{rc.name}</div>
+                    <div class="st-xref-meta">{rc.meta}</div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+        </article>
+      </div>
+    </div>
+
+    <style is:global>
+      /* Day is the default; night is the override (Aryan's call). */
+      body {
+        margin: 0; font-family: 'Archivo Variable', system-ui, sans-serif; background: var(--page); color: var(--ink); -webkit-font-smoothing: antialiased;
+        --page: #e9e6de; --paper: #faf8f1; --ink: #24221c; --sub: #6c675c; --accent: #2b52b8; --note: #b8955f; --line: rgba(40, 36, 28, 0.2);
+      }
+      body[data-theme='dark'] { --page: #16140f; --paper: #efe9da; --ink: #e8e5db; --sub: #99948a; --note: #a8865a; --line: rgba(232, 229, 219, 0.16); }
+      ::selection { background: var(--accent); color: #fff; }
+      @keyframes desk-land { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; } }
+      @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+
+      .st-wrap { max-width: 1140px; margin: 0 auto; padding: 104px 32px 130px; }
+      @media (max-width: 640px) { .st-wrap { padding: 84px 18px 100px; } }
+      .st-crumb { font-family: 'Courier Prime', monospace; font-size: 10px; letter-spacing: 2.5px; color: var(--sub); text-decoration: none; }
+      .st-crumb:hover, .st-crumb:focus-visible { color: var(--accent); }
+      .st-cols { display: flex; flex-wrap: wrap; gap: 44px; align-items: flex-start; margin-top: 28px; }
+
+      .st-rail { flex: 1 1 250px; max-width: 300px; min-width: 240px; position: sticky; top: 76px; align-self: flex-start; animation: desk-land 0.55s cubic-bezier(0.22, 0.8, 0.32, 1) both; }
+      @media (max-width: 640px) { .st-rail { position: static; max-width: none; } }
+      .st-rail-card { position: relative; background: var(--paper); padding: 22px 20px 20px; transform: rotate(-0.6deg); box-shadow: -4px 8px 10px rgba(10, 6, 2, 0.4), -10px 24px 40px rgba(10, 6, 2, 0.3); }
+      .st-rail-tape { position: absolute; left: 34%; top: -10px; width: 32%; height: 20px; background: rgba(232, 224, 202, 0.6); transform: rotate(-2deg); box-shadow: -1px 2px 3px rgba(10, 6, 2, 0.25); }
+      .st-stamp { display: inline-block; border: 2.5px solid #a32c22; color: #a32c22; font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 12.5px; letter-spacing: 1.5px; padding: 5px 11px; transform: rotate(-3.5deg); opacity: 0.88; }
+      .st-stamp-draft { margin-top: 10px; font-size: 10px; transform: rotate(2deg); opacity: 0.75; }
+      .st-meta { display: flex; flex-direction: column; gap: 13px; margin-top: 18px; }
+      .st-meta-label { font-family: 'Courier Prime', monospace; font-size: 8.5px; letter-spacing: 2px; color: #8b8574; }
+      .st-meta-value { margin-top: 3px; font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 13px; line-height: 1.45; color: #211f19; }
+      .st-print { position: relative; margin: 20px -4px 4px; background: #fdfcf7; padding: 8px 8px 10px; transform: rotate(-1.5deg); box-shadow: -3px 6px 8px rgba(10, 6, 2, 0.3); }
+      .st-print-img { width: 100%; height: 172px; overflow: hidden; background: #c9c4b5; }
+      .st-print-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .st-print-cap { margin-top: 7px; font-family: 'Courier Prime', monospace; font-size: 8.5px; letter-spacing: 1.5px; color: #8b8574; }
+      .st-slip { margin: 18px -6px -6px; background: linear-gradient(160deg, #d9bd86, #cbae74); padding: 12px 13px; transform: rotate(0.8deg); box-shadow: -2px 4px 6px rgba(10, 6, 2, 0.3); font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 10.5px; line-height: 1.55; color: #3a2d17; }
+
+      .st-story { flex: 999 1 460px; max-width: 680px; animation: desk-land 0.55s cubic-bezier(0.22, 0.8, 0.32, 1) both; animation-delay: 0.08s; }
+      .st-h1 { margin: 0; font-size: clamp(28px, 4vw, 38px); line-height: 1.12; font-weight: 900; font-stretch: 112%; letter-spacing: -0.8px; color: var(--ink); }
+      .st-rule { width: 46px; height: 3px; background: var(--note); margin: 22px 0; }
+      .st-summary { margin: 0 0 34px; font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 18px; line-height: 1.6; color: var(--ink); text-wrap: pretty; }
+      .st-part { margin-bottom: 30px; }
+      /* Section headers: big, plain, black — Archivo like the titles, not
+         the typewriter face (Aryan's call). */
+      .st-part-label { font-weight: 900; font-stretch: 110%; font-size: clamp(19px, 2.2vw, 23px); letter-spacing: 0.5px; color: var(--ink); margin-bottom: 12px; text-transform: uppercase; }
+      .st-bullets { display: flex; flex-direction: column; gap: 9px; }
+      .st-bullet { display: flex; gap: 12px; }
+      .st-bullet span:first-child { font-family: 'Courier Prime', monospace; color: var(--sub); flex: none; }
+      .st-bullet span:last-child { font-family: 'Courier Prime', monospace; font-size: 15px; line-height: 1.65; color: var(--ink); text-wrap: pretty; }
+      .st-prose { margin: 0 0 20px; font-family: 'Courier Prime', monospace; font-size: 15.5px; line-height: 1.7; color: var(--ink); text-wrap: pretty; }
+
+      .st-exhibit { position: relative; margin: 38px -14px; background: var(--paper); padding: 15px 15px 16px; box-shadow: -4px 8px 10px rgba(10, 6, 2, 0.4), -10px 24px 40px rgba(10, 6, 2, 0.28); }
+      @media (max-width: 640px) { .st-exhibit { margin: 34px 0; } }
+      .st-exhibit-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+      .st-exhibit-label { font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 10.5px; letter-spacing: 3px; color: #a32c22; }
+      .st-exhibit-stamp { font-family: 'Courier Prime', monospace; font-size: 8.5px; letter-spacing: 1.5px; color: #8b8574; }
+      /* Exhibits are evidence — render at natural aspect, never crop. The
+         paper mount grows to fit whatever shape the deliverable is. */
+      .st-exhibit-img { width: 100%; background: #c9c4b5; }
+      .st-exhibit-img img { width: 100%; height: auto; display: block; }
+      .st-exhibit-cap { margin-top: 11px; font-family: 'Courier Prime', monospace; font-size: 12.5px; line-height: 1.55; color: #4a4032; text-wrap: pretty; }
+
+      .st-xref { margin-top: 56px; border-top: 1px solid var(--line); padding-top: 30px; }
+      .st-xref-label { font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 10.5px; letter-spacing: 3px; color: var(--sub); margin-bottom: 20px; }
+      .st-xref-cards { display: flex; flex-wrap: wrap; gap: 22px; }
+      .st-xref-card { width: 214px; text-decoration: none; background: linear-gradient(145deg, #f7f5ee 70%, #eae6d9); padding: 12px 13px 13px; box-shadow: -3px 6px 8px rgba(10, 6, 2, 0.4); transition: transform 0.2s ease; }
+      .st-xref-card:hover { transform: rotate(0deg) translateY(-6px) !important; }
+      .st-xref-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+      .st-xref-stamp { font-family: 'Courier Prime', monospace; font-weight: 700; font-size: 8.5px; letter-spacing: 1.8px; color: #8b8574; }
+      .st-xref-name { margin: 7px 0 0; font-size: 13px; line-height: 1.35; font-weight: 800; font-stretch: 108%; color: #211f19; }
+      .st-xref-meta { margin: 8px 0 0; font-family: 'Courier Prime', monospace; font-size: 8.5px; letter-spacing: 1px; color: #a29a86; }
+    </style>
+  </body>
+</html>

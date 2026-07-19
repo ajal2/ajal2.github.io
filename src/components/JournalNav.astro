@@ -1,0 +1,54 @@
+---
+// Fixed top bar shared by every field-journal page. Text only — the site's
+// mark is the desk itself, not a monogram. Nav chrome is always dark, even
+// in day theme (per the case-studies handoff).
+// `themeToggle` shows the NIGHT·DAY button on inner pages; the desk keeps
+// its lamp cord instead. Both write the same localStorage key, so the
+// theme follows across pages.
+import site from '../data/site.json';
+
+interface Props {
+  active?: 'files';
+  themeToggle?: boolean;
+}
+const { active, themeToggle = false } = Astro.props;
+---
+
+<nav class="jn-nav">
+  <a class="jn-brand" href="/">Aryan Jalota</a>
+  <div class="jn-links">
+    <a href="/files/" class:list={[{ 'jn-active': active === 'files' }]}>The Files</a>
+    <a href={site.github}>Projects</a>
+    {site.resume && <a href="/resume.pdf">Resume</a>}
+  </div>
+  {themeToggle && <button class="jn-theme" id="jn-theme">NIGHT · DAY</button>}
+</nav>
+
+{themeToggle && (
+  <script>
+    const btn = document.getElementById('jn-theme')!;
+    let theme = localStorage.getItem('aryan-theme2') || 'light';
+    const apply = () => {
+      document.body.dataset.theme = theme;
+      btn.textContent = theme === 'dark' ? 'NIGHT · DAY' : 'DAY · NIGHT';
+    };
+    btn.addEventListener('click', () => {
+      theme = theme === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem('aryan-theme2', theme); } catch {}
+      apply();
+    });
+    apply();
+  </script>
+)}
+
+<style is:global>
+  .jn-nav { position: fixed; top: 0; left: 0; right: 0; height: 52px; z-index: 500; display: flex; align-items: center; gap: 26px; padding: 0 26px; background: #14120e; border-bottom: 1px solid #000; box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45); }
+  .jn-brand { font-weight: 600; font-size: 14px; letter-spacing: 0.2px; color: #ece8dc; text-decoration: none; }
+  .jn-links { display: flex; align-items: center; gap: 18px; flex: 1; }
+  .jn-links a { font-size: 12.5px; color: #a8a396; text-decoration: none; }
+  .jn-links a:hover { color: var(--accent, #2b52b8); }
+  .jn-links a.jn-active { color: #ece8dc; border-bottom: 2px solid var(--accent, #2b52b8); padding-bottom: 2px; }
+  .jn-theme { background: none; border: 1px solid rgba(232, 224, 202, 0.3); color: #c9c2ae; font-family: 'Courier Prime', monospace; font-size: 9.5px; letter-spacing: 2px; padding: 6px 12px; cursor: pointer; }
+  .jn-theme:hover { border-color: var(--accent, #2b52b8); color: #ece8dc; }
+  .jn-brand:focus-visible, .jn-links a:focus-visible, .jn-theme:focus-visible { outline: 2px solid #2b52b8; outline-offset: 3px; }
+</style>

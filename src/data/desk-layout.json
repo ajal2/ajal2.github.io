@@ -1,0 +1,56 @@
+{
+  "acme": {
+    "x": 31,
+    "y": 31,
+    "rot": 2,
+    "w": 290,
+    "h": 152,
+    "pad": "11px 11px 12px",
+    "tapeL": true
+  },
+  "ibc-sandia": {
+    "x": 70,
+    "y": 63.5,
+    "rot": -3,
+    "w": 230,
+    "h": 170,
+    "pad": "11px 11px 12px",
+    "pin": true
+  },
+  "canusupport": {
+    "x": 42.5,
+    "y": 1.5,
+    "rot": 2,
+    "w": 195,
+    "h": 180,
+    "pad": "12px 12px 40px",
+    "pin": true
+  },
+  "founders": {
+    "x": 56.5,
+    "y": 5,
+    "rot": -2,
+    "w": 260,
+    "h": 170,
+    "pad": "11px 11px 12px",
+    "tapeL": true
+  },
+  "ibc-kamflex": {
+    "x": 62,
+    "y": 32.5,
+    "rot": 4,
+    "w": 240,
+    "h": 155,
+    "pad": "11px 11px 12px",
+    "pin": true
+  },
+  "silicon-valley": {
+    "x": 3.5,
+    "y": 62,
+    "rot": 3,
+    "w": 250,
+    "h": 165,
+    "pad": "11px 11px 12px",
+    "tapeL": true
+  }
+}
