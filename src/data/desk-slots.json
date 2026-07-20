@@ -1,0 +1,14 @@
+{
+  "_comment": "Desk scenography — positions only, NO story slugs. Prints are dealt into these cells by Notion seniority (oldest row first), so ticking 'On desk' in Notion is enough and nobody edits this file to publish. Cells are hand-composed to sit well together; overlapping the static set dressing (slip, notebook, stickers) is intentional. Capacity is the number of cells: extra prints show as a visible '+N more' chit, never dropped silently. 'pin' optionally freezes one story to one cell index, e.g. {\"acme\": 0} — normally left empty.",
+  "cells": [
+    { "x": 31, "y": 31, "rot": 2, "w": 290, "h": 152, "pad": "11px 11px 12px", "fastener": "tapeL" },
+    { "x": 42.5, "y": 1.5, "rot": 2, "w": 195, "h": 180, "pad": "12px 12px 40px", "fastener": "pin" },
+    { "x": 56.5, "y": 5, "rot": -2, "w": 260, "h": 170, "pad": "11px 11px 12px", "fastener": "tapeL" },
+    { "x": 62, "y": 32.5, "rot": 4, "w": 240, "h": 155, "pad": "11px 11px 12px", "fastener": "pin" },
+    { "x": 70, "y": 63.5, "rot": -3, "w": 230, "h": 170, "pad": "11px 11px 12px", "fastener": "pin" },
+    { "x": 3.5, "y": 62, "rot": 3, "w": 250, "h": 165, "pad": "11px 11px 12px", "fastener": "tapeL" },
+    { "x": 79, "y": 3, "rot": -2, "w": 215, "h": 140, "pad": "11px 11px 12px", "fastener": "tapeR" },
+    { "x": 24, "y": 58, "rot": 3, "w": 210, "h": 140, "pad": "11px 11px 12px", "fastener": "tapeL" }
+  ],
+  "pin": {}
+}

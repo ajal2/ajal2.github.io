@@ -17,8 +17,11 @@ coherent — they apply to human- and agent-written pages alike:
   palette, the two fonts and the type scale, the theme model, and when to use a
   token vs a literal. The machine source is `src/styles/tokens.css`, imported
   once via `src/components/Head.astro` (never re-import fonts or tokens).
-- [agent/STYLE_GUIDE.md](agent/STYLE_GUIDE.md) — the writing voice for project
-  pages (outcome-led, concrete, banned words).
+- [agent/STYLE_GUIDE.md](agent/STYLE_GUIDE.md) — the writing voice for story
+  bodies and notes (outcome-led, concrete, banned words).
+- [agent/SYNC.md](agent/SYNC.md) — how content gets from Notion to the site.
+  **All content lives in Notion.** Never add a page or hand-edit
+  `src/content/stories/` to publish something; the sync overwrites it.
 
 ## Documentation
 

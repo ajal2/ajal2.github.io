@@ -5,20 +5,29 @@
 // `themeToggle` shows the NIGHT·DAY button on inner pages; the desk keeps
 // its lamp cord instead. Both write the same localStorage key, so the
 // theme follows across pages.
+import { getCollection } from 'astro:content';
 import site from '../data/site.json';
+import { isPublished, tagsFrom } from '../lib/stories.mjs';
 
 interface Props {
-  active?: 'files';
+  // 'files', or a tag slug (e.g. 'experience') to highlight that section.
+  active?: string;
   themeToggle?: boolean;
 }
 const { active, themeToggle = false } = Astro.props;
+
+// The sections build themselves from the tags in use. Add a tag in Notion and
+// it appears here; drop the last story carrying a tag and it disappears.
+const sections = tagsFrom((await getCollection('stories')).filter(isPublished));
 ---
 
 <nav class="jn-nav">
   <a class="jn-brand" href="/">Aryan Jalota</a>
   <div class="jn-links">
     <a href="/files/" class:list={[{ 'jn-active': active === 'files' }]}>The Files</a>
-    <a href={site.github}>Projects</a>
+    {sections.map((s) => (
+      <a href={`/${s.slug}/`} class:list={[{ 'jn-active': active === s.slug }]}>{s.tag}</a>
+    ))}
     {site.resume && <a href="/resume.pdf">Resume</a>}
   </div>
   {themeToggle && <button class="jn-theme" id="jn-theme">NIGHT · DAY</button>}

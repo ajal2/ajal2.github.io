@@ -2,7 +2,8 @@
 // The Desk — the homepage, ported from the Claude Design handoff
 // (design_handoff_field_journal/Home - The Desk v3.dc.html).
 // Content comes from the stories collection (Notion mirror); print positions
-// and fasteners come from desk-layout.json (repo-owned scenography).
+// are dealt automatically into src/data/desk-slots.json by src/lib/desk.mjs —
+// ticking "On desk" in Notion is all it takes, nobody edits a file to publish.
 // Interactions ported 1:1: drag (with tilt + persistence), click to flip,
 // the mug spill, the lamp-cord theme toggle.
 import { existsSync } from 'node:fs';
@@ -10,8 +11,9 @@ import { getCollection } from 'astro:content';
 import Head from '../components/Head.astro';
 import JournalNav from '../components/JournalNav.astro';
 import site from '../data/site.json';
-import layout from '../data/desk-layout.json';
+import deskSlots from '../data/desk-slots.json';
 import { isPublished } from '../lib/stories.mjs';
+import { placeDesk } from '../lib/desk.mjs';
 
 // Sticker art is repo-owned set dressing: drop files into public/desk/ and
 // the slots below pick them up at build time; until then the slot shows a
@@ -21,18 +23,21 @@ const deskArt = (base: string) =>
 const stick1 = deskArt('illini-sticker');
 const stick2 = deskArt('block-i');
 
-// Drafts appear in local dev so new prints can be previewed; the published
-// build only ever places Filed stories.
+// Unpublished rows appear in local dev so new prints can be previewed; the
+// published build only ever places Live stories.
 const stories = await getCollection('stories', (s) => isPublished(s) && s.data.onDesk);
 
-type Slot = { x: number; y: number; rot: number; w: number; h: number; pad: string; pin?: boolean; tapeL?: boolean; tapeR?: boolean };
-const prints = stories
-  .map((s, i) => {
-    const slot = (layout as Record<string, Slot>)[s.data.slug];
-    if (!slot) console.warn(`[desk] no layout slot for "${s.data.slug}" — add it to desk-layout.json`);
-    return slot && { s: s.data, slot, delay: (0.15 + i * 0.055).toFixed(2) };
-  })
-  .filter(Boolean) as { s: any; slot: Slot; delay: string }[];
+// Positions are dealt automatically by Notion seniority — see src/lib/desk.mjs.
+// Ticking "On desk" in Notion is all it takes; nothing here needs editing.
+const { placed, overflow } = placeDesk(
+  stories.map((s) => s.data),
+  deskSlots
+);
+const prints = placed.map(({ story, cell }, i) => ({
+  s: story,
+  slot: cell,
+  delay: (0.15 + i * 0.055).toFixed(2),
+}));
 ---
 
 <!doctype html>
@@ -204,9 +209,9 @@ const prints = stories
               </div>
             </div>
           </div>
-          {slot.pin && <div class="dk-pin"></div>}
-          {slot.tapeL && <div class="dk-tapeL"></div>}
-          {slot.tapeR && <div class="dk-tapeR"></div>}
+          {slot.fastener === 'pin' && <div class="dk-pin"></div>}
+          {slot.fastener === 'tapeL' && <div class="dk-tapeL"></div>}
+          {slot.fastener === 'tapeR' && <div class="dk-tapeR"></div>}
           <div class="dk-flip-hint">CLICK TO FLIP</div>
         </div>
       ))}
@@ -217,6 +222,14 @@ const prints = stories
         <div class="dk-cord-knob"></div>
         <div class="dk-cord-label" id="dk-cord-label">TURN LAMP ON</div>
       </div>
+
+      {/* The desk holds a finite number of prints. Extras are never dropped
+          silently — they say so, on the site, where it will actually be seen. */}
+      {overflow.length > 0 && (
+        <a class="dk-overflow" href="/files/">
+          +{overflow.length} MORE PRINT{overflow.length > 1 ? 'S' : ''} — IN THE FILES ↓
+        </a>
+      )}
 
       <a class="dk-cue" href="#index">SCROLL — THE FILES ↓</a>
     </div>
@@ -528,6 +541,8 @@ const prints = stories
       .dk-cord-knob { width: 20px; height: 20px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #b08d5a, #6e522c 70%); box-shadow: -3px 5px 7px rgba(10, 6, 2, 0.5); }
       .dk-cord-label { margin-top: 6px; background: #efe8d4; border: 1px solid #c9c0a6; padding: 7px 12px; box-shadow: -3px 5px 7px rgba(10, 6, 2, 0.45); transform: rotate(-3deg); font-family: var(--font-mono); font-weight: 700; font-size: 12px; letter-spacing: 2px; color: #33291a; white-space: nowrap; }
 
+      .dk-overflow { position: absolute; left: 50%; bottom: 54px; transform: translate(-50%, 0) rotate(-1deg); z-index: 40; background: rgba(232, 224, 202, 0.92); padding: 5px 12px; box-shadow: -2px 4px 6px rgba(10, 6, 2, 0.35); font-family: var(--font-mono); font-weight: 700; font-size: 10px; letter-spacing: 1.5px; color: #2c2318; text-decoration: none; white-space: nowrap; }
+      .dk-overflow:hover { color: var(--accent); }
       .dk-cue { position: absolute; left: 50%; bottom: 16px; transform: translate(-50%, 0); z-index: 40; display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: rgba(16, 12, 7, 0.72); border: 1px solid rgba(232, 224, 202, 0.28); color: #e4ddc9; text-decoration: none; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 2px; animation: cue-drop 2.2s ease-in-out infinite; backdrop-filter: blur(3px); }
       .dk-cue:hover { border-color: var(--accent); color: #fff; }
 

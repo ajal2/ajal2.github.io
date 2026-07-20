@@ -1,22 +1,23 @@
 name: Stories sync
 
-# Mirrors Filed stories from the Notion "Filing Cabinet" into the repo and
-# redeploys the site when anything changed. No AI in this path — flip a row
-# to Filed in Notion and it ships on the next run (or run this manually from
-# the Actions tab for an instant publish).
+# Mirrors Live stories from the Notion "Filing Cabinet" into the repo and
+# redeploys the site when anything changed. No AI in this path — tick "Live"
+# in Notion and it ships on the next run (or run this manually from the
+# Actions tab for an instant publish).
 on:
   schedule:
     - cron: '43 2,14 * * *' # twice daily; odd minute — top-of-hour crons are delayed/dropped
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Validate against Notion but do not write, commit, or deploy'
+        description: 'Read Notion and report, but write nothing'
         type: boolean
         default: false
 
 permissions:
   contents: write
   actions: write # to dispatch deploy.yml (bot pushes do not fire push triggers)
+  issues: write # to raise a visible issue when a sync fails
 
 concurrency:
   group: stories-sync
@@ -26,9 +27,9 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -40,22 +41,71 @@ jobs:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         run: node agent/sync-stories.mjs ${{ inputs.dry_run == true && '--dry-run' || '' }}
 
-      - name: Validate the site still builds
+      # Commit first, build second: on the common no-change run there is
+      # nothing new to validate, so the build is pure waste.
+      - name: Commit if changed
         if: ${{ inputs.dry_run != true }}
-        run: npx astro build
-
-      - name: Commit and deploy if changed
-        if: ${{ inputs.dry_run != true }}
-        env:
-          GH_TOKEN: ${{ github.token }}
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Both paths are created by the sync, so they always exist here.
           git add src/content/stories public/photos/stories
           if git diff --cached --quiet; then
             echo "No story changes."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git commit -m "stories: sync from Notion"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Validate the site builds
+        if: ${{ steps.commit.outputs.changed == 'true' }}
+        run: npx astro build
+
+      - name: Push and deploy
+        if: ${{ steps.commit.outputs.changed == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
           git push
           gh workflow run deploy.yml
+
+      # The owner does not watch the Actions tab. A failed sync opens (or
+      # updates) one issue, which GitHub emails — and the issue body says what
+      # to do about it in plain language.
+      - name: Report a failure where it will be seen
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          TITLE="Notion sync is failing"
+          EXISTING=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number')
+          BODY=$(printf '%s\n' \
+            "The twice-daily Notion → site sync failed. The website is unchanged and still shows the last good version." \
+            "" \
+            "**Run log:** $RUN_URL" \
+            "" \
+            "Most likely causes, in order:" \
+            "1. The \`NOTION_TOKEN\` secret is missing or expired." \
+            "2. The \`site-sync\` integration lost access to the Filing Cabinet (Notion → the database → ⋯ → Connections)." \
+            "3. A property was renamed in Notion." \
+            "" \
+            "Per-row content problems do NOT fail this run — those show up in the **Sync** column in Notion instead.")
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "$BODY"
+          else
+            gh issue create --title "$TITLE" --body "$BODY"
+          fi
+
+      # Close the alarm automatically once a run succeeds again.
+      - name: Clear the failure issue
+        if: ${{ success() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NUM=$(gh issue list --state open --search "Notion sync is failing in:title" --json number --jq '.[0].number')
+          if [ -n "$NUM" ]; then
+            gh issue close "$NUM" --comment "Sync succeeded again — closing."
+          fi

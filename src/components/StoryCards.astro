@@ -1,0 +1,89 @@
+---
+// The taped card grid, shared by The Files and every tag section, so a story
+// looks the same wherever it surfaces. Ported from the Claude Design handoff
+// (design_handoff_case_studies/Case Studies - Index.dc.html).
+import { parseStoryBody } from '../lib/story-body.mjs';
+
+interface Props {
+  stories: any[];
+  empty?: string;
+}
+const { stories, empty = 'Nothing filed here yet.' } = Astro.props;
+
+const ROTS = [-1.1, 0.9, -0.6, 1.2, -0.4, 0.7];
+// Undated stories sort last rather than crashing the page — Period is optional
+// in Notion on purpose.
+const when = (s: any) => (s.data.periodStart ? s.data.periodStart.valueOf() : -Infinity);
+
+const cards = [...stories]
+  .sort((a, b) => when(b) - when(a))
+  .map((s, i) => {
+    const d = s.data;
+    const { summary } = parseStoryBody(s.body);
+    return {
+      ...d,
+      // The manila block needs typed words: the note, or the story's own
+      // summary line, or an honest placeholder for unwritten drafts.
+      // (|| not ?? — the parser returns '' for missing summaries.)
+      noteText: d.typedNote || summary || '…file being written.',
+      tagLine: (d.tags ?? []).join(' / ').toUpperCase(),
+      meta: [d.org, d.periodStart ? `’${String(d.periodStart.getUTCFullYear()).slice(2)}` : null]
+        .filter(Boolean)
+        .join(' · '),
+      rot: ROTS[i % ROTS.length],
+      delay: (0.05 + (i % 6) * 0.06).toFixed(2),
+    };
+  });
+---
+
+{cards.length === 0 && <p class="cs-empty">{empty}</p>}
+
+<div class="cs-grid">
+  {cards.map((c) => (
+    <a class="cs-card" href={`/stories/${c.slug}/`} style={`transform:rotate(${c.rot}deg);animation-delay:${c.delay}s`}>
+      <div class="cs-tapeL"></div>
+      <div class="cs-tapeR"></div>
+      <div class="cs-top">
+        <span class="cs-stamp">{c.stamp}</span>
+        <span class="cs-tagline">{c.tagLine}{!c.live && <b class="cs-draft"> · DRAFT</b>}</span>
+      </div>
+      {c.photo ? (
+        <div class="cs-photo"><img src={c.photo} alt={c.printCaption ?? c.name} loading="lazy" /></div>
+      ) : (
+        <div class="cs-nophoto">
+          <div class="cs-nophoto-note">“{c.noteText}”</div>
+          <div class="cs-nophoto-label">NO PHOTOGRAPH ON FILE</div>
+        </div>
+      )}
+      <h2 class="cs-name">{c.name}</h2>
+      {c.photo && <div class="cs-note">“{c.noteText}”</div>}
+      <div class="cs-meta">{c.meta}</div>
+    </a>
+  ))}
+</div>
+
+<style is:global>
+  @keyframes desk-land { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; } }
+  .cs-empty { margin-top: 40px; font-family: var(--font-mono); font-size: var(--text-meta); color: var(--sub); }
+  .cs-grid { margin-top: 40px; display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 44px 36px; align-items: start; }
+  @media (max-width: 420px) { .cs-grid { grid-template-columns: 1fr; } }
+
+  .cs-card { position: relative; display: block; text-decoration: none; background: linear-gradient(145deg, #f7f5ee 70%, #eae6d9); padding: 13px 13px 15px; box-shadow: -4px 8px 10px rgba(10, 6, 2, 0.42), -10px 24px 38px rgba(10, 6, 2, 0.3); transition: transform 0.22s ease; animation: desk-land 0.55s cubic-bezier(0.22, 0.8, 0.32, 1) both; }
+  .cs-card:hover { transform: rotate(0deg) translateY(-9px) !important; }
+  .cs-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .cs-tapeL, .cs-tapeR { position: absolute; top: -9px; width: 60px; height: 19px; background: rgba(232, 224, 202, 0.6); box-shadow: -1px 2px 3px rgba(10, 6, 2, 0.25); pointer-events: none; }
+  .cs-tapeL { left: -16px; transform: rotate(-42deg); }
+  .cs-tapeR { right: -16px; transform: rotate(42deg); }
+  .cs-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; margin-bottom: 9px; }
+  .cs-stamp { font-family: var(--font-mono); font-weight: 700; font-size: 9.5px; letter-spacing: 1.8px; color: var(--stamp); white-space: nowrap; }
+  .cs-tagline { font-family: var(--font-mono); font-size: 8px; letter-spacing: 1.2px; color: #a29a86; text-align: right; }
+  .cs-draft { color: var(--stamp-red); }
+  .cs-photo { width: 100%; height: 210px; overflow: hidden; background: #c9c4b5; }
+  .cs-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cs-nophoto { width: 100%; height: 210px; box-sizing: border-box; background: linear-gradient(160deg, #d9bd86, #cbae74); padding: 16px 15px; display: flex; flex-direction: column; justify-content: space-between; }
+  .cs-nophoto-note { font-family: var(--font-mono); font-weight: 700; font-size: 12.5px; line-height: 1.55; color: #3a2d17; }
+  .cs-nophoto-label { font-family: var(--font-mono); font-size: 7.5px; letter-spacing: 2px; color: #7a6238; }
+  .cs-name { margin: 11px 0 0; font-size: 16.5px; line-height: 1.3; font-weight: 800; letter-spacing: -0.2px; color: var(--ink-title); }
+  .cs-note { margin: 10px 0 0; background: rgba(200, 172, 117, 0.28); padding: 8px 10px; font-family: var(--font-mono); font-size: 10.5px; line-height: 1.5; color: #4a4032; }
+  .cs-meta { margin: 10px 0 0; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1px; color: var(--stamp); }
+</style>

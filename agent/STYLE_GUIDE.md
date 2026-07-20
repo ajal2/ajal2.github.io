@@ -1,7 +1,8 @@
-# Project-page style guide
+# Writing style guide
 
-This file is the voice contract for project pages on ajal2.github.io. It is
-fed verbatim to the drafting agent and applies equally to human-written pages.
+The voice contract for what you type into Notion — the story body, the Card
+line, and the Flip note. Nothing enforces this; it is here so the writing stays
+consistent when you are adding a row at speed.
 
 ## The job
 

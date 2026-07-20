@@ -1,0 +1,40 @@
+---
+// A section per tag, built from whatever tags actually exist in Notion.
+// Tag a row "Experience" and /experience/ appears; invent a new tag and its
+// section appears too. No code change, no list to maintain.
+import { getCollection } from 'astro:content';
+import Head from '../../components/Head.astro';
+import JournalNav from '../../components/JournalNav.astro';
+import StoryCards from '../../components/StoryCards.astro';
+import { isPublished, tagsFrom, tagSlug } from '../../lib/stories.mjs';
+
+export async function getStaticPaths() {
+  const all = (await getCollection('stories')).filter(isPublished);
+  return tagsFrom(all).map(({ tag, slug }) => ({
+    params: { tag: slug },
+    props: { tag, stories: all.filter((s) => (s.data.tags ?? []).includes(tag)) },
+  }));
+}
+
+const { tag, stories } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <Head title={`${tag} — Aryan Jalota`} description={`${tag} work, filed.`} />
+  </head>
+  <body>
+    <JournalNav active={tagSlug(tag)} themeToggle />
+    <div class="cs-wrap">
+      <h1 class="cs-h1">{tag.toUpperCase()}</h1>
+      <StoryCards stories={stories} />
+    </div>
+    <style is:global>
+      /* Palette, fonts, and base styles come from src/styles/tokens.css (via Head). */
+      .cs-wrap { max-width: 1420px; margin: 0 auto; padding: 88px 40px 110px; }
+      .cs-h1 { margin: 0; font-size: var(--text-display); line-height: 1; font-weight: 900; letter-spacing: -0.8px; color: var(--ink); }
+      @media (max-width: 420px) { .cs-wrap { padding: 76px 20px 90px; } }
+    </style>
+  </body>
+</html>

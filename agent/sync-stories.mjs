@@ -1,23 +1,22 @@
 // Mirror the Notion "Filing Cabinet" into src/content/stories/ + photos.
 // Runs on a schedule in CI (stories-sync.yml) and locally via
-//   NOTION_TOKEN=... node agent/sync-stories.mjs [--dry-run]
-// No AI anywhere in this path: Notion is the CMS, Status is the editor.
+//   NOTION_TOKEN=... node agent/sync-stories.mjs [--dry-run] [--drafts]
+// No AI anywhere in this path: Notion is the CMS, the Live checkbox is the gate.
 //
-// Rules this script enforces (the "standard way of doing things"):
-// - ONLY rows with Status = Filed leave Notion. The repo is public, so a
-//   Drafting story (possibly with unscrubbed client names) must never be
-//   mirrored, even though the site build would also skip it.
-// - Photo convention: three table slots per story — Photo (the one visual,
-//   polaroid/lead), Proof 1 and Proof 2 (captioned work exhibits). Bodies
-//   are pure prose; an image dropped into a page body is a sync error.
-// - The mirror is authoritative: stories and photos that stop being Filed
-//   (or disappear in Notion) are deleted here on the next sync.
-// - Any rule violation aborts the whole sync before anything is written,
-//   so the repo never holds a half-synced state.
-import { mkdirSync, writeFileSync, readdirSync, rmSync, existsSync } from 'node:fs';
+// THE CONTRACT (why this script is shaped the way it is):
+// - Notion is the single source of truth. The owner edits rows; nobody edits
+//   this repo to publish. Anything derivable is derived here, never demanded.
+// - ONE row can never break the whole site. A bad row is skipped and reported;
+//   the rest publish. There is no global abort for content problems.
+// - The owner does not read CI logs. Every per-row problem is written BACK into
+//   Notion's "Sync" / "Sync note" columns, next to the row that caused it.
+// - The mirror is authoritative: rows that stop being Live are deleted here.
+//   That power is guarded (see the zero-live guard) so a Notion/API mishap
+//   cannot silently wipe the site.
+import { mkdirSync, writeFileSync, readdirSync, rmSync, existsSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { storySchema } from './story-schema.mjs';
+import { storySchema, storyWarnings } from './story-schema.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const STORIES_DIR = join(ROOT, 'src/content/stories');
@@ -27,13 +26,15 @@ const NOTION_VERSION = '2025-09-03';
 const WEB_IMAGE_EXT = /\.(jpe?g|png|webp|avif|gif)$/i;
 
 const DRY_RUN = process.argv.includes('--dry-run');
-// --drafts mirrors ALL statuses for local preview (the dev server renders
-// drafts, the prod build still won't). Never allowed in CI: the repo is
-// public and unscrubbed drafts must not be committed. A later CI sync
-// prunes any draft files, so a local --drafts run self-heals too.
+// --drafts mirrors every row regardless of the Live checkbox, for local
+// preview only. Refused in CI: the repo is public and unpublished rows may
+// hold unscrubbed client detail.
 const DRAFTS = process.argv.includes('--drafts');
+// Escape hatch for the zero-live guard, for the legitimate "I really did
+// unpublish everything" case.
+const ALLOW_EMPTY = process.argv.includes('--allow-empty');
 if (DRAFTS && process.env.CI) {
-  console.error('--drafts is a local preview flag; CI syncs Filed stories only.');
+  console.error('--drafts is a local preview flag; CI publishes Live rows only.');
   process.exit(1);
 }
 const TOKEN = process.env.NOTION_TOKEN;
@@ -80,13 +81,36 @@ const text = (rt) => (rt ?? []).map((t) => t.plain_text).join('').trim();
 const prop = {
   title: (p) => text(p?.title),
   rich: (p) => text(p?.rich_text),
-  select: (p) => p?.select?.name,
+  // Reads both `select` and Notion's native `status` property type, so
+  // converting the column in Notion can't silently blank the value.
+  select: (p) => p?.select?.name ?? p?.status?.name,
   multi: (p) => (p?.multi_select ?? []).map((o) => o.name),
   check: (p) => !!p?.checkbox,
   date: (p) => p?.date ?? {},
   relation: (p) => (p?.relation ?? []).map((r) => r.id),
   file: (p) => p?.files?.[0]?.file?.url ?? p?.files?.[0]?.external?.url,
 };
+
+// --- derivation: fill in what the owner left blank ------------------------
+const CURLY = '’';
+// House typography: stamps use a curly apostrophe ("CHICAGO ’25"). Notion gets
+// whatever the phone keyboard produced, so normalise rather than nag.
+const curlify = (s) => (s ?? '').replace(/'/g, CURLY);
+
+export const slugify = (s) =>
+  (s ?? '')
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    // Titles are often "Name — subtitle"; keep the part before the dash.
+    .split(/[—–|:]/)[0]
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+    .replace(/-+$/, '');
+
+const yy = (d) => (d ? `${CURLY}${String(new Date(d).getUTCFullYear()).slice(2)}` : '');
 
 // --- rich text / blocks → markdown ----------------------------------------
 function inline(rt) {
@@ -102,38 +126,42 @@ function inline(rt) {
     .join('');
 }
 
-// Converts the supported block subset. Bodies are prose-only by convention —
-// images belong in the Photo / Proof 1 / Proof 2 properties.
+// Converts the supported block subset. Anything unsupported is skipped with a
+// warning rather than failing the row — an odd block in Notion must never cost
+// the owner a publish.
 function blocksToMarkdown(blocks) {
   const lines = [];
-  const problems = [];
+  const notes = [];
   for (const b of blocks) {
     const t = b.type;
     if (t === 'paragraph') lines.push(inline(b.paragraph.rich_text), '');
-    else if (t === 'heading_1') lines.push(`# ${inline(b.heading_1.rich_text)}`, '');
+    else if (t === 'heading_1') lines.push(`## ${inline(b.heading_1.rich_text)}`, '');
     else if (t === 'heading_2') lines.push(`## ${inline(b.heading_2.rich_text)}`, '');
     else if (t === 'heading_3') lines.push(`### ${inline(b.heading_3.rich_text)}`, '');
     else if (t === 'bulleted_list_item') lines.push(`- ${inline(b.bulleted_list_item.rich_text)}`);
-    else if (t === 'numbered_list_item') lines.push(`1. ${inline(b.numbered_list_item.rich_text)}`);
+    else if (t === 'numbered_list_item') lines.push(`- ${inline(b.numbered_list_item.rich_text)}`);
     else if (t === 'quote') lines.push(`> ${inline(b.quote.rich_text)}`, '');
+    else if (t === 'callout') lines.push(inline(b.callout.rich_text), '');
+    else if (t === 'toggle') lines.push(inline(b.toggle.rich_text), '');
+    else if (t === 'code') lines.push(inline(b.code.rich_text), '');
     else if (t === 'divider') lines.push('---', '');
-    else if (t === 'image')
-      problems.push('image in the page body — move it to the Photo / Proof 1 / Proof 2 property instead');
-    else problems.push(`unsupported block type "${t}" — use plain text, lists, or quotes`);
+    else if (t === 'image') notes.push('an image in the page body was skipped — put photos in the Photo / Proof properties');
+    else notes.push(`a "${t}" block was skipped — the site renders text, lists and quotes`);
   }
-  return { markdown: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim(), problems };
+  return { markdown: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim(), notes };
 }
 
 async function download(url, destBase, label) {
-  const res = await fetch(url); // signed Notion URL — valid for ~1h, used immediately
-  if (!res.ok) throw new Error(`download failed (${res.status}) for ${label}`);
   const clean = new URL(url).pathname;
-  const ext = (clean.match(/\.[a-z0-9]+$/i)?.[0] ?? '.jpg').toLowerCase();
+  const ext = (clean.match(/\.[a-z0-9]+$/i)?.[0] ?? '').toLowerCase();
+  // Validate BEFORE spending the download.
   if (!WEB_IMAGE_EXT.test(ext))
     throw new Error(
-      `${label} is "${ext}" — browsers can't render that. Re-export as JPG/PNG ` +
+      `${label}: "${ext || 'no extension'}" isn't a web image. Re-export as JPG/PNG ` +
         `(dragging out of Apple Photos converts automatically) and re-upload.`
     );
+  const res = await fetch(url); // signed Notion URL — valid ~1h, used immediately
+  if (!res.ok) throw new Error(`${label}: download failed (${res.status})`);
   const dest = `${destBase}${ext}`;
   if (!DRY_RUN) {
     mkdirSync(dirname(dest), { recursive: true });
@@ -142,40 +170,62 @@ async function download(url, destBase, label) {
   return ext;
 }
 
-// --- YAML emit (matches the hand-written frontmatter style) ----------------
-// A JSON string literal is also a valid YAML double-quoted scalar, and it
-// escapes everything hand-rolled quoting misses — newlines (Shift+Enter in a
-// Notion field), tabs, control chars — so a stray line break can't break the
-// frontmatter or silently fold two lines together.
+// --- YAML emit -------------------------------------------------------------
+// A JSON string literal is also a valid YAML double-quoted scalar and escapes
+// everything hand-rolled quoting misses (newlines, tabs, control chars).
 const q = (s) => JSON.stringify(String(s));
 const yamlList = (a) => `[${a.map(q).join(', ')}]`;
+const iso = (d) => new Date(d).toISOString().slice(0, 10);
 
-function frontmatter(story) {
+function frontmatter(s) {
   const l = [
-    `slug: ${q(story.slug)}`,
-    `name: ${q(story.name)}`,
-    `tags: ${yamlList(story.tags)}`,
-    ...(story.org ? [`org: ${q(story.org)}`] : []),
-    `stamp: ${q(story.stamp)}`,
-    `periodStart: ${story.periodStart}`,
-    ...(story.periodEnd ? [`periodEnd: ${story.periodEnd}`] : []),
-    ...(story.printCaption ? [`printCaption: ${q(story.printCaption)}`] : []),
-    ...(story.typedNote ? [`typedNote: ${q(story.typedNote)}`] : []),
-    ...(story.photo ? [`photo: ${q(story.photo)}`] : []),
-    ...(story.proof1 ? [`proof1: ${q(story.proof1)}`] : []),
-    ...(story.proof1Caption ? [`proof1Caption: ${q(story.proof1Caption)}`] : []),
-    ...(story.proof2 ? [`proof2: ${q(story.proof2)}`] : []),
-    ...(story.proof2Caption ? [`proof2Caption: ${q(story.proof2Caption)}`] : []),
-    `onDesk: ${story.onDesk}`,
-    `status: ${q(story.status)}`,
-    `related: ${yamlList(story.related)}`,
-    `notionId: ${q(story.notionId)}`,
+    `slug: ${q(s.slug)}`,
+    `name: ${q(s.name)}`,
+    `tags: ${yamlList(s.tags)}`,
+    ...(s.org ? [`org: ${q(s.org)}`] : []),
+    ...(s.stamp ? [`stamp: ${q(s.stamp)}`] : []),
+    ...(s.periodStart ? [`periodStart: ${iso(s.periodStart)}`] : []),
+    ...(s.periodEnd ? [`periodEnd: ${iso(s.periodEnd)}`] : []),
+    ...(s.printCaption ? [`printCaption: ${q(s.printCaption)}`] : []),
+    ...(s.typedNote ? [`typedNote: ${q(s.typedNote)}`] : []),
+    ...(s.photo ? [`photo: ${q(s.photo)}`] : []),
+    ...(s.proof1 ? [`proof1: ${q(s.proof1)}`] : []),
+    ...(s.proof1Caption ? [`proof1Caption: ${q(s.proof1Caption)}`] : []),
+    ...(s.proof2 ? [`proof2: ${q(s.proof2)}`] : []),
+    ...(s.proof2Caption ? [`proof2Caption: ${q(s.proof2Caption)}`] : []),
+    `onDesk: ${s.onDesk}`,
+    `live: ${s.live}`,
+    `related: ${yamlList(s.related)}`,
+    `createdAt: ${q(new Date(s.createdAt).toISOString())}`,
+    `notionId: ${q(s.notionId)}`,
   ];
   return `---\n${l.join('\n')}\n---\n`;
 }
 
+// --- writeback: put the result next to the row, inside Notion --------------
+// Best-effort. If the integration is read-only this fails harmlessly and the
+// sync still publishes; it just can't report into Notion.
+let writebackBroken = false;
+async function writeBack(pageId, properties) {
+  if (DRY_RUN || writebackBroken) return;
+  try {
+    await notion(`pages/${pageId}`, { method: 'PATCH', body: JSON.stringify({ properties }) });
+  } catch (e) {
+    if (!writebackBroken) {
+      writebackBroken = true;
+      console.warn(
+        '  ! could not write status back into Notion (needs the integration\'s\n' +
+          '    "Update content" capability). Publishing continues regardless.'
+      );
+    }
+  }
+}
+// NOTE: writeback bumps the row's last_edited_time. Harmless today; if this
+// sync ever becomes incremental keyed on last_edited_time, it would re-trigger
+// itself — key incremental runs off content hashes instead.
+
 // --- sync ------------------------------------------------------------------
-console.log(`${DRY_RUN ? '[dry-run] ' : ''}querying The Filing Cabinet…`);
+console.log(`${DRY_RUN ? '[dry-run] ' : ''}reading The Filing Cabinet…`);
 const rows = await paginate((cursor) =>
   notion(`data_sources/${DATA_SOURCE_ID}/query`, {
     method: 'POST',
@@ -183,58 +233,64 @@ const rows = await paginate((cursor) =>
   })
 );
 
-const slugById = new Map(rows.map((r) => [r.id, prop.rich(r.properties.Slug)]));
-const selected = DRAFTS ? rows : rows.filter((r) => prop.select(r.properties.Status) === 'Filed');
-
-// Slug is the filename and the URL — two rows sharing one would silently
-// clobber each other's story and photos, so it's a sync error like any other.
-const slugs = selected.map((r) => prop.rich(r.properties.Slug));
-const dupes = [...new Set(slugs.filter((s, i) => slugs.indexOf(s) !== i))];
-if (dupes.length) {
-  console.error(`Sync aborted — duplicate Slug${dupes.length > 1 ? 's' : ''} in Notion: ${dupes.join(', ')}`);
-  console.error('Each row needs a unique Slug; fix in Notion and re-run.');
-  process.exit(1);
+// Resolve slugs first so relations can be mapped, filling blanks from the name.
+const slugById = new Map();
+for (const r of rows) {
+  const explicit = prop.rich(r.properties.Slug);
+  slugById.set(r.id, explicit || slugify(prop.title(r.properties.Name)));
 }
 
-const filedSlugs = new Set(slugs);
-console.log(`${rows.length} rows, syncing ${selected.length}${DRAFTS ? ' (drafts included — local preview only)' : ' Filed'}`);
+const isLive = (r) => prop.check(r.properties.Live);
+const selected = rows.filter((r) => DRAFTS || isLive(r));
+console.log(`${rows.length} rows · ${selected.length} ${DRAFTS ? 'previewed (drafts included)' : 'live'}`);
 
-const errors = [];
-const output = []; // fully validated before anything touches disk
+const problems = []; // per-row, non-fatal
+const output = [];
+const seen = new Map(); // slug -> name, for duplicate detection
 
 for (const row of selected) {
   const p = row.properties;
-  const slug = prop.rich(p.Slug);
-  const label = `"${prop.title(p.Name)}" (${slug || 'no slug'})`;
+  const name = prop.title(p.Name) || 'Untitled';
+  const explicitSlug = prop.rich(p.Slug);
+  const slug = explicitSlug || slugify(name);
+  const label = `"${name}"`;
   try {
+    if (!slug) throw new Error('needs a Name (the slug is derived from it)');
+    if (seen.has(slug))
+      throw new Error(`duplicate Slug "${slug}" — already used by "${seen.get(slug)}". Give one a different Slug.`);
+
     const blocks = await paginate((cursor) =>
       notion(`blocks/${row.id}/children?page_size=100${cursor ? `&start_cursor=${cursor}` : ''}`)
     );
-    const { markdown, problems } = blocksToMarkdown(blocks);
-    if (problems.length) throw new Error(problems.join('; '));
+    const { markdown, notes } = blocksToMarkdown(blocks);
 
     const date = prop.date(p.Period);
+    const org = prop.select(p.Org) || undefined;
+    const rawStamp = prop.rich(p.Stamp);
     const story = {
       slug,
-      name: prop.title(p.Name),
+      name,
       tags: prop.multi(p.Tags),
-      org: prop.select(p.Org) || undefined,
-      stamp: prop.rich(p.Stamp),
-      periodStart: date.start,
+      org,
+      // Blank stamp? Compose one from Org + the period year so the print still
+      // reads right. Apostrophes normalised to the house curly form either way.
+      stamp: curlify(rawStamp) || [org?.toUpperCase(), yy(date.start)].filter(Boolean).join(' ') || undefined,
+      periodStart: date.start || undefined,
       periodEnd: date.end || undefined,
       printCaption: prop.rich(p['Card line']) || undefined,
       typedNote: prop.rich(p['Flip note']) || undefined,
-      photo: undefined, // photo/proof paths set below once extensions are known
+      photo: undefined,
       proof1: undefined,
       proof1Caption: prop.rich(p['Proof 1 caption']) || undefined,
       proof2: undefined,
       proof2Caption: prop.rich(p['Proof 2 caption']) || undefined,
       onDesk: prop.check(p['On desk']),
-      status: prop.select(p.Status),
+      live: isLive(row),
       related: prop
         .relation(p['Related stories'])
         .map((id) => slugById.get(id))
-        .filter((s) => s && filedSlugs.has(s)),
+        .filter(Boolean),
+      createdAt: row.created_time,
       notionId: row.id,
     };
 
@@ -250,36 +306,104 @@ for (const row of selected) {
     }
 
     storySchema.parse(story);
-    output.push({ slug, content: frontmatter(story) + (markdown ? `\n${markdown}\n` : '') });
-    console.log(`  ✓ ${label}${story.proof1 ? ` — ${story.proof2 ? 2 : 1} proof(s)` : ''}`);
+    seen.set(slug, name);
+    output.push({ slug, story, content: frontmatter(story) + (markdown ? `\n${markdown}\n` : '') });
+
+    const warns = [...storyWarnings(story), ...notes];
+    console.log(`  ✓ ${label}${warns.length ? ` (${warns.length} note${warns.length > 1 ? 's' : ''})` : ''}`);
+    // Fill the Slug column in Notion the first time we derive one, so the URL
+    // is stable from then on even if the Name changes later.
+    const patch = {
+      Sync: { select: { name: warns.length ? 'Check' : 'OK' } },
+      'Sync note': {
+        rich_text: [{ text: { content: (warns.join(' · ') || `published ${new Date().toISOString().slice(0, 10)}`).slice(0, 1900) } }],
+      },
+    };
+    if (!explicitSlug) patch.Slug = { rich_text: [{ text: { content: slug } }] };
+    await writeBack(row.id, patch);
   } catch (e) {
-    errors.push(`  ✗ ${label}: ${e.message}`);
+    const msg = e?.issues?.[0]?.message || e.message || String(e);
+    problems.push(`  ✗ ${label}: ${msg}`);
+    console.error(`  ✗ ${label}: ${msg}`);
+    await writeBack(row.id, {
+      Sync: { select: { name: 'Blocked' } },
+      'Sync note': { rich_text: [{ text: { content: msg.slice(0, 1900) } }] },
+    });
   }
 }
 
-if (errors.length) {
-  console.error('\nSync aborted — fix these in Notion and re-run:');
-  for (const e of errors) console.error(e);
-  process.exit(1);
+// Rows that are no longer live get their status cleared, so a stale "OK" never
+// lingers next to something that is actually off the site.
+if (!DRAFTS) {
+  for (const row of rows) {
+    if (isLive(row)) continue;
+    await writeBack(row.id, {
+      Sync: { select: null },
+      'Sync note': { rich_text: [] },
+    });
+  }
 }
 
+const liveSlugs = new Set(output.map((o) => o.slug));
+
 if (DRY_RUN) {
-  console.log(`\n[dry-run] would write ${output.length} stories; no files touched`);
+  console.log(`\n[dry-run] would publish ${output.length} stories; nothing written.`);
+  if (problems.length) {
+    console.log(`\n${problems.length} row(s) need attention in Notion:`);
+    for (const p of problems) console.log(p);
+  }
   process.exit(0);
 }
 
-// Mirror: write everything, then prune stories/photos that are no longer Filed.
+// --- the zero-live guard --------------------------------------------------
+// The mirror is authoritative, which means a bad read could delete the whole
+// site. If Notion returns nothing publishable but the mirror currently holds
+// stories, that is far more likely to be a token/permission/schema accident
+// than a deliberate unpublish-everything. Refuse and keep the site up.
 mkdirSync(STORIES_DIR, { recursive: true });
+mkdirSync(PHOTOS_DIR, { recursive: true }); // must exist for CI's `git add`
+const existing = readdirSync(STORIES_DIR).filter((f) => f.endsWith('.md'));
+if (!liveSlugs.size && existing.length && !ALLOW_EMPTY) {
+  console.error(
+    `\nRefusing to publish: Notion returned 0 live stories but the site currently\n` +
+      `has ${existing.length}. That usually means the integration lost access or a\n` +
+      `property was renamed — not that everything was unpublished.\n` +
+      `The site is unchanged. If you really did untick every row, re-run with --allow-empty.`
+  );
+  process.exit(1);
+}
+
 for (const { slug, content } of output) writeFileSync(join(STORIES_DIR, `${slug}.md`), content);
-for (const f of readdirSync(STORIES_DIR).filter((f) => f.endsWith('.md'))) {
+
+// Prune stories that are no longer live.
+for (const f of existing) {
   const slug = f.replace(/\.md$/, '');
-  if (!filedSlugs.has(slug)) {
+  if (!liveSlugs.has(slug)) {
     rmSync(join(STORIES_DIR, f));
-    console.log(`  − pruned ${f} (no longer Filed in Notion)`);
+    console.log(`  − removed ${slug} (no longer Live)`);
   }
 }
-if (existsSync(PHOTOS_DIR))
-  for (const d of readdirSync(PHOTOS_DIR))
-    if (!filedSlugs.has(d)) rmSync(join(PHOTOS_DIR, d), { recursive: true });
+// Prune photo directories for dropped stories, AND stale files inside kept ones
+// (a cleared Photo property, or a re-upload under a different extension).
+if (existsSync(PHOTOS_DIR)) {
+  const keepBySlug = new Map(output.map((o) => [o.slug, o.story]));
+  for (const d of readdirSync(PHOTOS_DIR)) {
+    const dir = join(PHOTOS_DIR, d);
+    if (!statSync(dir).isDirectory()) continue;
+    const story = keepBySlug.get(d);
+    if (!story) {
+      rmSync(dir, { recursive: true });
+      continue;
+    }
+    const keep = new Set(
+      [story.photo, story.proof1, story.proof2].filter(Boolean).map((p) => p.split('/').pop())
+    );
+    for (const f of readdirSync(dir)) if (!keep.has(f)) rmSync(join(dir, f));
+  }
+}
 
-console.log(`\nsynced ${output.length} stories`);
+console.log(`\npublished ${output.length} stories`);
+if (problems.length) {
+  console.log(`\n${problems.length} row(s) need attention — see the Sync column in Notion:`);
+  for (const p of problems) console.log(p);
+}

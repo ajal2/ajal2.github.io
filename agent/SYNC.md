@@ -1,79 +1,123 @@
-# Stories: how content gets from Notion to the site
+# How the website works
 
-No AI is involved in this pipeline. Notion is the CMS; this repo renders it.
-
-## The flow
+Notion is the website. You edit rows in **The Filing Cabinet**; the site rebuilds
+itself. Nobody edits this repo to publish anything — not you, not an AI agent.
 
 ```
-Notion "The Filing Cabinet"          (write, edit, drag photos in)
-        │  only rows with Status = Filed
+Notion "The Filing Cabinet"          write, tick Live, drag photos in
+        │  twice daily, or on demand
         ▼
-agent/sync-stories.mjs               (runs twice daily in CI, or manually)
+agent/sync-stories.mjs               (GitHub Actions)
         │  writes src/content/stories/*.md + public/photos/stories/<slug>/
         ▼
-astro build → GitHub Pages           (site rebuilds and deploys)
+astro build → GitHub Pages           the site updates
 ```
 
-To publish a story: flip its Status to `Filed` in Notion. Done — it ships on
-the next scheduled run. To publish *now*: GitHub → Actions → "Stories sync"
-→ Run workflow. To unpublish: flip Status back; the next sync deletes the
-page and its photos from the repo.
+## Publishing something
 
-## The rules (enforced by the sync — it aborts with a message if broken)
+1. Write the row in Notion.
+2. **Tick `Live`.** That's it.
 
-- Only `Filed` rows ever leave Notion. The repo is public: half-written or
-  unscrubbed drafts stay in Notion, invisible.
-- `Slug` is permanent. It's the page URL and the join key to desk layout.
-- All images live in **table properties** — never in the page body:
-  - `Photo` — the one visual (polaroid on the desk / lead on the page)
-  - `Proof 1` + `Proof 1 caption` — work exhibit (slide, deliverable)
-  - `Proof 2` + `Proof 2 caption` — optional second exhibit or visual
-  A proof without its caption, or an image dropped into a page body, aborts
-  the sync. Page bodies are pure prose.
-- Images must be JPG/PNG/WebP (not HEIC — drag out of Apple Photos to
-  convert). Upload originals; the build handles sizing.
-- Desk rows (`On desk` checked) need both a Card line (the polaroid front)
-  and a Flip note (its back — also the quote on case-study index cards).
+Untick `Live` to take it down again. It ships on the next scheduled sync
+(02:43 and 14:43 UTC), or immediately via **GitHub → Actions → Stories sync →
+Run workflow**.
 
-## One-time setup (needed before the first run)
+## Where it shows up
 
-1. Create an internal integration at notion.so/profile/integrations
-   (name it e.g. `site-sync`; read access is enough).
-2. In Notion, open The Filing Cabinet page → ⋯ menu → Connections →
-   add `site-sync`.
-3. GitHub repo → Settings → Secrets and variables → Actions → new secret
-   `NOTION_TOKEN` = the integration secret.
+| You tick / fill | Where it appears |
+|---|---|
+| `Live` | `/files/` — the index of everything |
+| `On desk` | a polaroid on the homepage desk, **placed automatically** |
+| a `Tags` value | that tag's section, e.g. `Experience` → `/experience/` |
 
-## Running locally
+Tags build the sections. Invent a new tag in Notion and a new section and nav
+link appear by themselves. Nothing to configure.
+
+The desk holds 8 prints. Tick a 9th and nothing breaks — the extras show up as
+a **"+N more prints — in the files"** chit on the desk, linking to `/files/`.
+Prints are dealt oldest-row-first, so adding a new story never moves the ones
+already there.
+
+## The only field you must fill
+
+**`Name`.** Everything else is optional and degrades:
+
+- `Slug` — leave blank; it fills itself from the Name on the first sync, and
+  stays fixed after that. (It's the page URL, so changing it later changes the
+  address.)
+- `Stamp` — leave blank; it's built from `Org` + the year. Straight apostrophes
+  are corrected to the house curly form automatically.
+- `Card line` / `Flip note` — the front and back of a desk polaroid. A print
+  without them still renders; it just reads better with them.
+- `Period`, `Org`, `Tags`, photos, `Related stories` — all optional.
+
+## Photos
+
+Drop them in the **`Photo`**, **`Proof 1`**, **`Proof 2`** properties — never
+paste an image into the page body (it will be skipped, and the sync tells you).
+
+- `Photo` is the one visual: the polaroid and the story's lead image.
+- `Proof 1` / `Proof 2` are work exhibits, with their captions.
+- JPG, PNG or WebP. **Not HEIC** — drag out of Apple Photos to convert.
+
+## How you know it worked
+
+Look at the **`Sync`** column in Notion after a run:
+
+| `Sync` | Means |
+|---|---|
+| **OK** | published |
+| **Check** | published, but read `Sync note` — something's thin (e.g. a desk print with no Flip note) |
+| **Blocked** | *not* published — `Sync note` says why, in plain words |
+
+One bad row never blocks the others: the rest publish and only that row is held
+back. If the whole sync fails (expired token, lost Notion access), GitHub opens
+an issue titled **"Notion sync is failing"** and emails you — and the site stays
+on its last good version rather than emptying out.
+
+## One-time setup (already done, recorded here in case it must be redone)
+
+1. notion.so/profile/integrations → internal integration `site-sync`, with
+   **Read content** *and* **Update content** (Update is what lets the sync write
+   the `Sync` column back; without it publishing still works, you just don't get
+   the status back in Notion).
+2. Notion → The Filing Cabinet → `⋯` → **Connections** → add `site-sync`.
+   Missing this makes the token authenticate but see nothing.
+3. `gh secret set NOTION_TOKEN --repo ajal2/ajal2.github.io`
+
+## Running it locally
 
 ```bash
-NOTION_TOKEN=ntn_... node agent/sync-stories.mjs --dry-run   # validate only
-NOTION_TOKEN=ntn_... node agent/sync-stories.mjs             # sync Filed stories
-NOTION_TOKEN=ntn_... node agent/sync-stories.mjs --drafts    # + drafts, for local preview
-npx astro dev                                                # look at it
+NOTION_TOKEN=ntn_... node agent/sync-stories.mjs --dry-run   # read + report only
+NOTION_TOKEN=ntn_... node agent/sync-stories.mjs             # publish Live rows
+NOTION_TOKEN=ntn_... node agent/sync-stories.mjs --drafts    # include unpublished, for preview
+npx astro dev --background                                   # look at it
 ```
 
-`--drafts` mirrors every status so the dev server can preview unfinished
-stories (the published build still renders Filed only). It refuses to run
-in CI, and a later CI sync prunes draft files — don't commit them.
-
-`agent/story-archive/` holds a frozen copy of the original 13 seeded
-stories (the 11 desk prints from the Claude Design handoff + 2 project
-stubs) taken 2026-07-18 before the Notion cleanup — re-seed from here if
-the desk prints are ever wanted back in Notion.
+`--drafts` mirrors every row so the dev server can preview unfinished stories.
+It refuses to run in CI, and a later CI sync prunes the extra files.
 
 ## Where things live
 
-- `agent/story-schema.mjs` — the field contract (Notion ↔ repo, one source
-  of truth). Change the Notion schema → change this file to match.
-- `src/content/stories/*.md` — the mirror. Never edit by hand; the next
-  sync overwrites it. Edit in Notion.
-- `public/photos/stories/<slug>/` — downloaded photos (`photo.*` = the
-  visual, `exhibit-N.*` = proofs). Also sync-owned.
-- `src/data/desk-layout.json` — print positions/rotation/tape-pin for the
-  homepage desk. Repo-owned on purpose: a Notion edit can change what a
-  print says, never where it sits.
-- `src/pages/stories/[slug].astro` — the one template every story page
-  uses. `src/pages/files/index.astro` — The Files index, the guaranteed
-  route into every story (membership = every Filed story; it's data, not
-  curation — tags show on the cards).
+- `agent/sync-stories.mjs` — the whole pipeline. No AI in it.
+- `agent/story-schema.mjs` — the field contract. Deliberately permissive: a
+  missing optional field degrades the page, it never blocks a publish.
+- `src/content/stories/*.md` + `public/photos/stories/` — the mirror. Never edit
+  by hand; the next sync overwrites it. Edit in Notion.
+- `src/data/desk-slots.json` — desk positions, **with no story names in it**.
+  Prints are dealt into these cells automatically. Touch it only to redesign the
+  desk composition, never to publish.
+- `src/lib/desk.mjs` — the placement rule (oldest row first, so new stories
+  never shuffle old ones). `pin` in desk-slots.json can freeze one story to one
+  cell if a specific spot ever matters.
+- `agent/DESIGN_GUIDE.md` — colours and type. `agent/STYLE_GUIDE.md` — writing
+  voice.
+
+## The safety net
+
+The mirror is authoritative: rows that stop being `Live` are deleted from the
+site. That power is guarded — if Notion returns **zero** live rows while the
+site currently has stories, the sync refuses and leaves the site untouched, on
+the assumption that a lost token or renamed property is far likelier than a
+deliberate unpublish-everything. Override with `--allow-empty` if you really
+did mean it.
