@@ -4,7 +4,8 @@
 // dossier rail (stamp, meta, taped photo, typed note) beside the memo
 // (summary → four parts, EXHIBIT A interrupting after "What I did",
 // EXHIBIT B after the last part; prose bodies get all exhibits at the end).
-// Drafts render in local dev for preview; the published build is Filed-only.
+// Unpublished rows render in local dev for preview; the published build is
+// live-only (see src/lib/stories.mjs).
 import { getCollection } from 'astro:content';
 import Head from '../../components/Head.astro';
 import JournalNav from '../../components/JournalNav.astro';
@@ -29,9 +30,11 @@ const metaRows = [
   { label: 'FILED UNDER', value: d.tags.join(' · ') },
 ].filter((r) => r.value);
 
+// w/h come from the sync so the browser reserves the right space before the
+// image arrives — without them each exhibit snaps in and shoves the text down.
 const proofs = [
-  { src: d.proof1, caption: d.proof1Caption },
-  { src: d.proof2, caption: d.proof2Caption },
+  { src: d.proof1, caption: d.proof1Caption, w: d.proof1W, h: d.proof1H },
+  { src: d.proof2, caption: d.proof2Caption, w: d.proof2W, h: d.proof2H },
 ]
   .filter((p) => p.src)
   .map((p, i) => ({ ...p, letter: 'AB'[i] }));
@@ -78,7 +81,7 @@ const related = stories
           <div class="st-rail-card">
             <div class="st-rail-tape"></div>
             <div class="st-stamp">{d.stamp}</div>
-            {d.status !== 'Filed' && <div class="st-stamp st-stamp-draft">DRAFT — NOT FILED</div>}
+            {!d.live && <div class="st-stamp st-stamp-draft">DRAFT — NOT LIVE</div>}
             <div class="st-meta">
               {metaRows.map((r) => (
                 <div>
@@ -120,7 +123,7 @@ const related = stories
                 <span class="st-exhibit-label">EXHIBIT {midProof.letter}</span>
                 <span class="st-exhibit-stamp">{d.stamp}</span>
               </div>
-              <div class="st-exhibit-img"><img src={midProof.src} alt={midProof.caption} loading="lazy" /></div>
+              <div class="st-exhibit-img"><img src={midProof.src} alt={midProof.caption} width={midProof.w} height={midProof.h} loading="lazy" /></div>
               <figcaption class="st-exhibit-cap">{midProof.caption}</figcaption>
             </figure>
           )}
@@ -144,7 +147,7 @@ const related = stories
                 <span class="st-exhibit-label">EXHIBIT {ex.letter}</span>
                 <span class="st-exhibit-stamp">{d.stamp}</span>
               </div>
-              <div class="st-exhibit-img"><img src={ex.src} alt={ex.caption} loading="lazy" /></div>
+              <div class="st-exhibit-img"><img src={ex.src} alt={ex.caption} width={ex.w} height={ex.h} loading="lazy" /></div>
               <figcaption class="st-exhibit-cap">{ex.caption}</figcaption>
             </figure>
           ))}

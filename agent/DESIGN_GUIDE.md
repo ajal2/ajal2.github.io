@@ -92,8 +92,8 @@ theme.
    `src/components/Head.astro`, which imports them once. **Never re-import
    `@fontsource/*` or `tokens.css` in a page.**
 2. For a standard inner page, use the `JournalShell` layout — you get the nav,
-   the paper sheet (`.js-sheet`), the crumb (`.js-crumb`), the theme toggle,
-   and the base styles for free. `src/pages/404.astro` is the minimal model.
+   the centred column (`.js-page`), the theme toggle and the base styles for
+   free. `src/pages/404.astro` is the minimal model.
 3. Style with tokens: `var(--font-*)`, `var(--text-*)`, the palette vars. Do
    **not** re-declare `body` background/color/font — the base owns them.
 4. Reach for a literal hex only for a genuinely new skeuomorphic object. If it's

@@ -30,39 +30,32 @@ Modeled on the tender-copilot README. The rules, with the receipts:
 5. **Plain sentences.** Short, declarative, active voice. Weight comes from
    facts, not adjectives.
 
-## Frontmatter semantics
+## The short fields
 
-- `title` — the repo name, verbatim. Not a marketing rename.
-- `summary` — one sentence a recruiter reads in a list row (30–160 chars).
-  What it does, concretely.
-- `outcome` — a real result stated in the README, verifiable near-verbatim
-  (≤120 chars). Omit when none exists. **Never invent metrics, users, or
-  outcomes.**
-- `stack` — up to 6 short labels from the repo languages and README.
-- `status` — `active` (ongoing), `shipped` (done, usable), `archived`.
-- `repo`, `demo`, `date`, `featured`, `draftedBy` — injected by the script
-  from GitHub metadata. The model never writes links or dates.
+- **Card line** — the front of the polaroid. One lowercase line, concrete, no
+  title case: *senior capstone with a real cnc manufacturer*.
+- **Flip note** — the back. One or two dry sentences in first person, with the
+  number in them if there is one: *I sized $1.44M a year in cost variance and
+  we won Best Paper for it.*
+- **Stamp** — place and year, e.g. `CHICAGO ’25`. Leave it blank and the sync
+  builds one from Org + year.
 
 ## Body shape (150–300 words)
 
-1. Opening paragraph, no heading: the problem and what this is.
-2. `## How it works` — the interesting design decision(s), not a file tour.
-3. `## Honest limits` — what it doesn't do, what's deliberately manual, what's
-   unproven. (A results section like `## Validated on a real bid` may come
-   before it when the README supports one.)
+Write it as four labelled bullets and the page renders them as the memo:
+
+- **Situation:** what was in front of you.
+- **What I did:** the decision(s), not a task list.
+- **Value:** what it was worth, in the units the business used.
+- **What I learned:** the honest part — including what it didn't prove.
+
+Free prose works too; the page falls back to paragraphs. Open with one bold
+line that works as a standalone summary — it becomes the page's lead and the
+card's quote.
 
 ## Banned
 
 Emoji. Exclamation marks. "Passionate", "excited", "thrilled", "delighted".
 "Powerful", "robust", "seamless", "cutting-edge", "blazing", "revolutionary",
 "game-changing". "Leverage" as a verb. "Hi, I'm". Superlatives without
-evidence. Any claim not traceable to the README.
-
-## Gold examples
-
-The two hand-written pages are the reference output:
-
-- `src/content/projects/tender-copilot.md`
-- `src/content/projects/jbss-website.md`
-
-The drafting script embeds both in the prompt. Match their register exactly.
+evidence. Any claim you couldn't show someone.

@@ -14,7 +14,7 @@
 :root {
   /* --- Page surface: flips with theme -----------------------------------
      Text and background of the page itself. The dark override lives on
-     body[data-theme='dark'] below, to match the theme toggle, which sets
+     :root[data-theme='dark'] below, to match the theme toggle, which sets
      document.body.dataset.theme (localStorage key 'aryan-theme2'). */
   --page: #e9e6de;   /* page background */
   --paper: #faf8f1;  /* raised paper sheet (cards, the JournalShell sheet) */
@@ -70,7 +70,7 @@
   --track-stamp: 2px;    /* uppercase stamps */
 }
 
-body[data-theme='dark'] {
+:root[data-theme='dark'] {
   --page: #16140f;
   --paper: #efe9da;
   --ink: #e8e5db;
@@ -88,6 +88,10 @@ body[data-theme='dark'] {
    ========================================================================= */
 body {
   margin: 0;
+  /* The card tape and the desk props overhang their boxes on purpose. `clip`
+     stops that decoration creating a horizontal scrollbar — unlike `hidden`
+     it doesn't make a scroll container, so position:sticky still works. */
+  overflow-x: clip;
   font-family: var(--font-sans);
   background: var(--page);
   color: var(--ink);

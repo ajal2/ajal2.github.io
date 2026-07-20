@@ -16,6 +16,7 @@
 import { mkdirSync, writeFileSync, readdirSync, rmSync, existsSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import sharp from 'sharp';
 import { storySchema, storyWarnings } from './story-schema.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -151,7 +152,14 @@ function blocksToMarkdown(blocks) {
   return { markdown: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim(), notes };
 }
 
-async function download(url, destBase, label) {
+// Notion hands back phone originals — 4000px, 4MB. Nothing on this site shows
+// a photo bigger than ~300 CSS px (desk print, story rail, card) or ~680 px
+// (an exhibit), so these caps are 2× that: crisp on a retina screen, a fraction
+// of the bytes. Resizing here rather than at build time matters because the
+// sync COMMITS these files — unoptimised originals would live in git forever.
+const MAX_W = { photo: 900, proof: 1400 };
+
+async function download(url, destBase, label, kind) {
   const clean = new URL(url).pathname;
   const ext = (clean.match(/\.[a-z0-9]+$/i)?.[0] ?? '').toLowerCase();
   // Validate BEFORE spending the download.
@@ -162,12 +170,19 @@ async function download(url, destBase, label) {
     );
   const res = await fetch(url); // signed Notion URL — valid ~1h, used immediately
   if (!res.ok) throw new Error(`${label}: download failed (${res.status})`);
-  const dest = `${destBase}${ext}`;
+  // { animated: true } is load-bearing: WEB_IMAGE_EXT admits .gif, and without
+  // it sharp silently flattens an animated GIF to its first frame.
+  const out = await sharp(Buffer.from(await res.arrayBuffer()), { animated: true })
+    .resize({ width: MAX_W[kind] ?? MAX_W.photo, withoutEnlargement: true })
+    // A PNG source is almost always a chart or slide; keep its thin text crisp.
+    .webp({ quality: ext === '.png' ? 90 : 78 })
+    .toBuffer({ resolveWithObject: true });
+  const dest = `${destBase}.webp`;
   if (!DRY_RUN) {
     mkdirSync(dirname(dest), { recursive: true });
-    writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
+    writeFileSync(dest, out.data);
   }
-  return ext;
+  return { ext: '.webp', width: out.info.width, height: out.info.height };
 }
 
 // --- YAML emit -------------------------------------------------------------
@@ -191,8 +206,10 @@ function frontmatter(s) {
     ...(s.photo ? [`photo: ${q(s.photo)}`] : []),
     ...(s.proof1 ? [`proof1: ${q(s.proof1)}`] : []),
     ...(s.proof1Caption ? [`proof1Caption: ${q(s.proof1Caption)}`] : []),
+    ...(s.proof1W ? [`proof1W: ${s.proof1W}`, `proof1H: ${s.proof1H}`] : []),
     ...(s.proof2 ? [`proof2: ${q(s.proof2)}`] : []),
     ...(s.proof2Caption ? [`proof2Caption: ${q(s.proof2Caption)}`] : []),
+    ...(s.proof2W ? [`proof2W: ${s.proof2W}`, `proof2H: ${s.proof2H}`] : []),
     `onDesk: ${s.onDesk}`,
     `live: ${s.live}`,
     `related: ${yamlList(s.related)}`,
@@ -294,15 +311,27 @@ for (const row of selected) {
       notionId: row.id,
     };
 
-    for (const [key, propName, file] of [
-      ['photo', 'Photo', 'photo'],
-      ['proof1', 'Proof 1', 'exhibit-1'],
-      ['proof2', 'Proof 2', 'exhibit-2'],
+    for (const [key, propName, file, kind] of [
+      ['photo', 'Photo', 'photo', 'photo'],
+      ['proof1', 'Proof 1', 'exhibit-1', 'proof'],
+      ['proof2', 'Proof 2', 'exhibit-2', 'proof'],
     ]) {
       const url = prop.file(p[propName]);
       if (!url) continue;
-      const ext = await download(url, join(PHOTOS_DIR, slug, file), `${label} ${propName}`);
+      const { ext, width, height } = await download(
+        url,
+        join(PHOTOS_DIR, slug, file),
+        `${label} ${propName}`,
+        kind
+      );
       story[key] = `/photos/stories/${slug}/${file}${ext}`;
+      // Exhibits render at their natural aspect (height:auto), so the page needs
+      // their shape up front or it jumps as each one loads. Prints sit in boxes
+      // of a fixed size and don't need it.
+      if (kind === 'proof') {
+        story[`${key}W`] = width;
+        story[`${key}H`] = height;
+      }
     }
 
     storySchema.parse(story);

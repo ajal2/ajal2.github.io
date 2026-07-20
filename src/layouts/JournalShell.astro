@@ -31,8 +31,5 @@ const { title, description, person } = Astro.props;
   /* Palette, fonts, base body, ::selection, focus, reduced-motion all come
      from src/styles/tokens.css (via Head). Only the shell layout below. */
   .js-page { max-width: 780px; margin: 0 auto; padding: 92px 20px 120px; }
-  .js-sheet { background: var(--paper); padding: clamp(28px, 6vw, 54px); box-shadow: -4px 8px 10px rgba(10, 6, 2, 0.4), -10px 24px 40px rgba(10, 6, 2, 0.3); }
   .js-mono { font-family: var(--font-mono); }
-  .js-crumb { display: inline-block; margin: 0 0 18px; font-family: var(--font-mono); font-size: var(--text-stamp); letter-spacing: var(--track-wide); color: var(--stamp); text-decoration: none; }
-  .js-crumb:hover { color: var(--accent); }
 </style>

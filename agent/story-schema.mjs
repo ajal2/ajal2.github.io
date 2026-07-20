@@ -48,6 +48,12 @@ export const storySchema = z.object({
   proof1Caption: z.string().max(300).optional(),
   proof2: z.string().optional(),
   proof2Caption: z.string().max(300).optional(),
+  // Exhibit dimensions, written by the sync so pages can reserve the right
+  // space before the image loads instead of jumping. Never typed by hand.
+  proof1W: z.number().optional(),
+  proof1H: z.number().optional(),
+  proof2W: z.number().optional(),
+  proof2H: z.number().optional(),
   onDesk: z.boolean().default(false),
   // Slugs of related stories. One-way in Notion; the build resolves the
   // reverse direction, so link child→parent once and both pages show it.

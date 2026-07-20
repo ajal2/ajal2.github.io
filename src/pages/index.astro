@@ -10,6 +10,7 @@ import { existsSync } from 'node:fs';
 import { getCollection } from 'astro:content';
 import Head from '../components/Head.astro';
 import JournalNav from '../components/JournalNav.astro';
+import StoryCards from '../components/StoryCards.astro';
 import site from '../data/site.json';
 import deskSlots from '../data/desk-slots.json';
 import { isPublished } from '../lib/stories.mjs';
@@ -26,6 +27,8 @@ const stick2 = deskArt('block-i');
 // Unpublished rows appear in local dev so new prints can be previewed; the
 // published build only ever places Live stories.
 const stories = await getCollection('stories', (s) => isPublished(s) && s.data.onDesk);
+// Same set, kept as entries (not .data) for the narrow-screen card list below.
+const deskStories = stories;
 
 // Positions are dealt automatically by Notion seniority — see src/lib/desk.mjs.
 // Ticking "On desk" in Notion is all it takes; nothing here needs editing.
@@ -46,7 +49,9 @@ const prints = placed.map(({ story, cell }, i) => ({
     <Head title="Aryan Jalota" person />
   </head>
   <body>
-    <JournalNav />
+    {/* themeToggle is for narrow screens only — the desk has its lamp cord.
+        The button is hidden above 1100px so the two never both show. */}
+    <JournalNav themeToggle />
 
     <div class="dk" id="dk">
       <div class="dk-lamp"></div>
@@ -187,7 +192,10 @@ const prints = placed.map(({ story, cell }, i) => ({
       </div>
 
       <!-- the prints -->
-      {prints.map(({ s, slot, delay }) => (
+      {/* Every print is above the fold, so none are lazy. The first in DOM
+          order is the widest cell in desk-slots.json and is the usual LCP
+          candidate — a property of the current composition, not a guarantee. */}
+      {prints.map(({ s, slot, delay }, i) => (
         <div
           class="dk-item dk-print"
           data-id={s.slug}
@@ -200,7 +208,7 @@ const prints = placed.map(({ story, cell }, i) => ({
             <div class="dk-card">
               <div class="dk-face dk-print-front" style={`padding:${slot.pad}`}>
                 <div class="dk-photo" style={`height:${slot.h}px`}>
-                  {s.photo ? <img src={s.photo} alt={s.printCaption} loading="lazy" /> : <div class="dk-slot">drop: {s.printCaption ?? s.name}</div>}
+                  {s.photo ? <img src={s.photo} alt={s.printCaption} fetchpriority={i === 0 ? 'high' : undefined} /> : <div class="dk-slot">drop: {s.printCaption ?? s.name}</div>}
                 </div>
                 <div class="dk-print-meta">
                   <span class="dk-print-title">{s.printCaption}</span>
@@ -240,6 +248,23 @@ const prints = placed.map(({ story, cell }, i) => ({
       )}
 
       <a class="dk-cue" href="#index">SCROLL — THE FILES ↓</a>
+    </div>
+
+    {/* The desk is a fixed 1440-wide scene. Below ~1100px it scales down so far
+        the print captions fall under 8px — on a phone it's ~3px. Rather than
+        ship an unreadable desk, narrow screens get the letterhead and the same
+        story cards the rest of the site uses. The desk is untouched above it. */}
+    <div class="dk-small">
+      <div class="dk-small-head">
+        <h1>ARYAN JALOTA</h1>
+        <p>UIUC ’25. For every experience that can’t be explained through a resume.</p>
+        <div class="dk-small-links">
+          <a href={site.github}>GitHub</a>
+          {site.linkedin && <a href={site.linkedin}>LinkedIn</a>}
+          <a href={`mailto:${site.email}`}>email</a>
+        </div>
+      </div>
+      <StoryCards stories={deskStories} empty="Nothing filed yet." />
     </div>
 
     <!-- the files -->
@@ -291,11 +316,14 @@ const prints = placed.map(({ story, cell }, i) => ({
       // prints can never end up on top of each other on a narrower screen.
       const STAGE_W = 1440, STAGE_H = 820;
       const fitStage = () => {
-        const scale = Math.min(desk.clientWidth / STAGE_W, desk.clientHeight / STAGE_H);
+        // Read both dimensions once, up front: reading them again after the
+        // write below would force a second layout flush per call.
+        const w = desk.clientWidth, h = desk.clientHeight;
+        const scale = Math.min(w / STAGE_W, h / STAGE_H);
         desk.style.setProperty('--dk-scale', String(scale));
         // Centre the scaled canvas in the leftover space.
-        stage.style.left = `${Math.max(0, (desk.clientWidth - STAGE_W * scale) / 2)}px`;
-        stage.style.top = `${Math.max(0, (desk.clientHeight - STAGE_H * scale) / 2)}px`;
+        stage.style.left = `${Math.max(0, (w - STAGE_W * scale) / 2)}px`;
+        stage.style.top = `${Math.max(0, (h - STAGE_H * scale) / 2)}px`;
       };
       fitStage();
       addEventListener('resize', fitStage);
@@ -347,6 +375,10 @@ const prints = placed.map(({ story, cell }, i) => ({
             if (!moved) return;
             const step = ev.clientX - lastX; lastX = ev.clientX;
             dragTilt = Math.max(-7, Math.min(7, step * 0.55));
+            // The card carries a 0.55s transform transition for the flip. While
+            // dragging that re-eases every frame toward a target that's already
+            // moved, so the tilt never reads — suppress it until release.
+            el.classList.add('dk-dragging');
             pos[id] = {
               x: Math.min(95, Math.max(-4, start.x + (dx / rect.width) * 100)),
               y: Math.min(93, Math.max(-3, start.y + (dy / rect.height) * 100)),
@@ -354,8 +386,12 @@ const prints = placed.map(({ story, cell }, i) => ({
             apply(el, true);
           };
           const up = () => {
+            // Must come off BEFORE apply() below, or the click-to-flip path
+            // snaps instantly instead of doing its 0.55s turn.
+            el.classList.remove('dk-dragging');
             window.removeEventListener('pointermove', mv);
             window.removeEventListener('pointerup', up);
+            window.removeEventListener('pointercancel', up);
             dragTilt = 0;
             apply(el);
             if (!moved && id === 'cup') toggleSpill();
@@ -370,6 +406,10 @@ const prints = placed.map(({ story, cell }, i) => ({
           };
           window.addEventListener('pointermove', mv);
           window.addEventListener('pointerup', up);
+          // With touch-action: pan-y the browser steals vertical gestures and
+          // fires pointercancel INSTEAD of pointerup. Without this the move
+          // handler stays bound and the next touch anywhere drags the print.
+          window.addEventListener('pointercancel', up);
         });
         el.querySelector<HTMLElement>('.dk-unflip')?.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -404,7 +444,7 @@ const prints = placed.map(({ story, cell }, i) => ({
       const cordLabel = document.getElementById('dk-cord-label')!;
       let theme = localStorage.getItem('aryan-theme2') || 'light';
       const applyTheme = () => {
-        document.body.dataset.theme = theme;
+        document.documentElement.dataset.theme = theme;
         cordLabel.textContent = theme === 'dark' ? 'TURN LAMP OFF' : 'TURN LAMP ON';
         cord.title = theme === 'dark' ? 'turn the lamp off' : 'turn the lamp on';
       };
@@ -431,8 +471,8 @@ const prints = placed.map(({ story, cell }, i) => ({
          relative positions at any window size and can never pile up. */
       .dk-stage { position: absolute; left: 0; top: 0; width: 1440px; height: 820px; transform-origin: top left; transform: scale(var(--dk-scale, 1)); }
       .dk-lamp { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(1500px 960px at 50% -8%, rgba(255, 195, 115, 0.22), transparent 74%); opacity: 0.3; transition: opacity 1.2s ease; }
-      body[data-theme='dark'] .dk-lamp { opacity: 1; }
-      .dk-wood { position: absolute; inset: 0; pointer-events: none; opacity: 0.5; mix-blend-mode: multiply; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='420'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.004 0.12' numOctaves='5'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)' opacity='0.55'/%3E%3C/svg%3E"); }
+      :root[data-theme='dark'] .dk-lamp { opacity: 1; }
+      .dk-wood { position: absolute; inset: 0; pointer-events: none; opacity: 0.5; mix-blend-mode: multiply; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='420'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.004 0.12' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)' opacity='0.55'/%3E%3C/svg%3E"); }
       .dk-grain { position: absolute; inset: 0; pointer-events: none; opacity: 0.06; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
       .dk-ring { position: absolute; left: 52%; top: 51%; width: 96px; height: 88px; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(46, 26, 8, 0.55) 58%, rgba(46, 26, 8, 0.25) 64%, rgba(46, 26, 8, 0.08) 69%, transparent 73%); transform: rotate(-8deg); }
       .dk-pen { position: absolute; left: 14%; top: 54%; width: 168px; height: 9px; pointer-events: none; transform: rotate(-24deg); border-radius: 5px; background: linear-gradient(#3a3a40, #17171a 55%, #2c2c31); box-shadow: -3px 6px 7px rgba(10, 6, 2, 0.45); }
@@ -445,13 +485,16 @@ const prints = placed.map(({ story, cell }, i) => ({
       .dk-lh-links { display: flex; gap: 14px; align-items: baseline; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.5px; }
       .dk-lh-links a { color: #33302a; text-decoration: underline; text-underline-offset: 3px; }
 
-      .dk-item { position: absolute; cursor: grab; touch-action: none; user-select: none; animation: desk-land 0.65s cubic-bezier(0.22, 0.8, 0.32, 1) both; }
+      .dk-item { position: absolute; cursor: grab; touch-action: pan-y; user-select: none; animation: desk-land 0.65s cubic-bezier(0.22, 0.8, 0.32, 1) both; }
       .dk-item:active { cursor: grabbing; }
       .dk-slip { width: 188px; background: var(--note); padding: 13px 14px 15px; transform: rotate(-3deg); box-shadow: -3px 6px 8px rgba(10, 6, 2, 0.4); font-family: var(--font-mono); font-weight: 700; font-size: 11.5px; line-height: 1.55; color: #241c10; animation-delay: 1.16s; }
       .dk-tape1 { background: rgba(226, 218, 196, 0.92); padding: 6px 12px; transform: rotate(3deg); box-shadow: -2px 4px 6px rgba(10, 6, 2, 0.35); font-weight: 800; font-size: 13px; letter-spacing: 0.5px; color: #2c2318; white-space: nowrap; animation-delay: 1.22s; }
 
       .dk-persp { perspective: 1300px; }
       .dk-card { position: relative; transform-style: preserve-3d; transition: transform 0.55s cubic-bezier(0.35, 0.1, 0.2, 1); }
+      /* While dragging, the flip transition would re-ease every frame and mush
+         the tilt. The class is removed on release so the flip still animates. */
+      .dk-dragging .dk-card { transition: none; }
       .dk-face { backface-visibility: hidden; }
       .dk-back { position: absolute; inset: 0; transform: rotateY(180deg); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
 
@@ -575,6 +618,25 @@ const prints = placed.map(({ story, cell }, i) => ({
       .dk-cue { position: absolute; left: 50%; bottom: 16px; transform: translate(-50%, 0); z-index: 40; display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: rgba(16, 12, 7, 0.72); border: 1px solid rgba(232, 224, 202, 0.28); color: #e4ddc9; text-decoration: none; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 2px; animation: cue-drop 2.2s ease-in-out infinite; backdrop-filter: blur(3px); }
       .dk-cue:hover { border-color: var(--accent); color: #fff; }
 
+      /* The desk scene and its narrow-screen stand-in are mutually exclusive.
+         1100px is where the scaled print captions drop under ~8px; the band
+         between 820 and 1100 is just as unreadable, so the switch is here and
+         not at a phone-sized breakpoint. */
+      .dk-small { display: none; }
+      @media (max-width: 1100px) {
+        .dk { display: none; }
+        .dk-small { display: block; background: var(--page); padding: 76px 20px 60px; }
+        /* The desk has its own lamp-cord toggle; without the desk, the nav
+           button is the only one — so it must show here and hide above. */
+      }
+      @media (min-width: 1101px) { .jn-theme { display: none; } }
+      .dk-small-head { max-width: 1420px; margin: 0 auto 8px; }
+      .dk-small-head h1 { margin: 0; font-size: var(--text-display); line-height: 1; font-weight: 900; letter-spacing: -0.8px; color: var(--ink); }
+      .dk-small-head p { margin: 12px 0 0; font-size: var(--text-body); line-height: 1.5; color: var(--sub); max-width: 46ch; }
+      .dk-small-links { display: flex; gap: 16px; margin-top: 14px; font-family: var(--font-mono); font-size: var(--text-caption); }
+      .dk-small-links a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+      .dk-small .cs-grid { max-width: 1420px; margin-left: auto; margin-right: auto; }
+
       .dk-files { background: var(--page); padding: 96px 0 120px; }
       .dk-files-inner { max-width: 1150px; margin: 0 auto; padding: 0 32px; }
       .dk-files-lede { margin: 0 0 64px; font-size: 19px; font-weight: 500; color: var(--ink); max-width: 520px; }
@@ -590,3 +652,4 @@ const prints = placed.map(({ story, cell }, i) => ({
     </style>
   </body>
 </html>
+

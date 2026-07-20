@@ -3,36 +3,52 @@
 Personal site of Aryan Jalota — Astro, vanilla CSS, hosted on GitHub Pages.
 Live at <https://ajal2.github.io>.
 
+**Notion is the content.** Every story on this site is a row in the Notion
+database "The Filing Cabinet". You publish by ticking a checkbox there; nothing
+in this repo is edited to put something on the site. Full runbook:
+[agent/SYNC.md](agent/SYNC.md).
+
 ## Map
 
 ```
-src/content/projects/*.md    project pages (frontmatter schema: agent/project-schema.mjs)
-src/content/now.md           the "Now" section
-src/data/*.json              site identity, experience, education
-src/styles/tokens.css        the design system (paper/ink/madder, Mukta, danda ।)
-agent/                       the pipeline that drafts new project pages
-.github/workflows/           deploy.yml (push → Pages) · portfolio-agent.yml (daily + manual)
+src/content/stories/*.md     the Notion mirror — generated, never hand-edited
+public/photos/stories/       story photos, resized to webp by the sync
+agent/sync-stories.mjs       the whole pipeline: Notion → markdown + photos
+agent/story-schema.mjs       the field contract (deliberately permissive)
+src/pages/index.astro        the desk homepage
+src/pages/[tag]/index.astro  a section per Notion tag, generated from the data
+src/data/desk-slots.json     desk positions — positions only, no story names
+src/lib/desk.mjs             deals prints into those positions by seniority
+src/styles/tokens.css        the design system (Fraunces + Courier Prime)
+.github/workflows/           deploy.yml (push → Pages) · stories-sync.yml (2×/day + manual)
 ```
 
 ## How updates work
 
-- **Edit anything** → push to `main` → GitHub Actions builds and deploys.
-- **New project**: add the `portfolio` topic to a public repo (with a real
-  README). The nightly agent drafts `src/content/projects/<repo>.md` with
-  Claude, validates it against the schema and a real `astro build`, and opens
-  a PR. Review, tweak, merge — merging deploys it. Manual run: Actions →
-  "Portfolio agent" → Run workflow (optional `repo` + `dry_run` inputs).
-- **Un-list a project**: remove the `portfolio` topic AND delete its content
-  file (else the next run re-drafts it).
+- **Publish a story**: tick `Live` on the row in Notion. The sync picks it up on
+  the next run (02:43 / 14:43 UTC) or immediately via Actions → "Stories sync" →
+  Run workflow. Untick to take it down.
+- **Feature it on the desk**: tick `On desk`. The position is assigned
+  automatically — a new story never moves the prints already there.
+- **Add a section**: add a `Tag`. `/experience/`, `/case-study/` etc. and their
+  nav links are generated from whatever tags exist.
+- **Change the code**: push to `main` → Actions builds and deploys.
 
-Requires repo secret `ANTHROPIC_API_KEY` and Settings → Actions → General →
-"Allow GitHub Actions to create and approve pull requests".
+Requires repo secret `NOTION_TOKEN` (an internal Notion integration connected to
+The Filing Cabinet). See the one-time setup in [agent/SYNC.md](agent/SYNC.md).
 
 ## Local
 
 ```sh
 npm install
-npm run dev        # localhost:4321
-npm run build
-node agent/draft-project.mjs --repo <name> --dry-run   # test the agent
+npx astro dev --background                                   # localhost:4321
+npx astro build
+NOTION_TOKEN=ntn_... node agent/sync-stories.mjs --dry-run    # read Notion, write nothing
+NOTION_TOKEN=ntn_... node agent/sync-stories.mjs --drafts     # mirror unpublished rows too
 ```
+
+## Conventions
+
+[AGENTS.md](AGENTS.md) is the entry point for humans and coding agents alike;
+[agent/DESIGN_GUIDE.md](agent/DESIGN_GUIDE.md) covers colour and type,
+[agent/STYLE_GUIDE.md](agent/STYLE_GUIDE.md) the writing voice.

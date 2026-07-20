@@ -38,7 +38,7 @@ const sections = tagsFrom((await getCollection('stories')).filter(isPublished));
     const btn = document.getElementById('jn-theme')!;
     let theme = localStorage.getItem('aryan-theme2') || 'light';
     const apply = () => {
-      document.body.dataset.theme = theme;
+      document.documentElement.dataset.theme = theme;
       btn.textContent = theme === 'dark' ? 'NIGHT · DAY' : 'DAY · NIGHT';
     };
     btn.addEventListener('click', () => {
@@ -60,4 +60,14 @@ const sections = tagsFrom((await getCollection('stories')).filter(isPublished));
   .jn-theme { background: none; border: 1px solid rgba(232, 224, 202, 0.3); color: #c9c2ae; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: var(--track-stamp); padding: 6px 12px; cursor: pointer; }
   .jn-theme:hover { border-color: var(--accent); color: #ece8dc; }
   .jn-brand:focus-visible, .jn-links a:focus-visible, .jn-theme:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  /* Sections are generated from Notion tags, so the link count grows on its
+     own. On a phone the row scrolls sideways instead of widening the document
+     — an overflowing nav would put the whole page into horizontal scroll. */
+  @media (max-width: 760px) {
+    .jn-nav { gap: 14px; padding: 0 14px; }
+    .jn-brand { font-size: 13px; white-space: nowrap; }
+    .jn-links { gap: 14px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+    .jn-links::-webkit-scrollbar { display: none; }
+    .jn-links a { white-space: nowrap; }
+  }
 </style>

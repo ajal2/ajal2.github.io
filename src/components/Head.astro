@@ -7,6 +7,7 @@ import '@fontsource-variable/fraunces';
 import '@fontsource/courier-prime';
 import '@fontsource/courier-prime/700.css';
 import '../styles/tokens.css';
+import '../styles/cards.css';
 import site from '../data/site.json';
 
 interface Props {
@@ -40,6 +41,13 @@ const personLd = {
 
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+{/* Set the theme BEFORE first paint. The toggles below are module scripts,
+    which are deferred past parsing — without this a night-mode visitor gets a
+    full white flash on every page. `is:inline` is required or Astro turns this
+    into a module too and it stops working. */}
+<script is:inline>
+  try { document.documentElement.dataset.theme = localStorage.getItem('aryan-theme2') || 'light'; } catch {}
+</script>
 <title>{title}</title>
 <meta name="description" content={description} />
 <link rel="canonical" href={canonical} />
