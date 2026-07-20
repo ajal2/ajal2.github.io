@@ -53,6 +53,12 @@ const prints = placed.map(({ story, cell }, i) => ({
       <div class="dk-wood"></div>
       <div class="dk-grain"></div>
 
+      {/* Everything positioned lives on a fixed 1440×820 stage that scales as
+          one piece (see --dk-scale below). Positions are % and sizes are px;
+          scaling the whole stage is what keeps the composition identical at
+          every window size instead of letting prints pile up as it narrows. */}
+      <div class="dk-stage" id="dk-stage">
+
       <!-- coffee ring + pen, static set dressing -->
       <div class="dk-ring"></div>
       <div class="dk-pen"><div></div></div>
@@ -223,6 +229,8 @@ const prints = placed.map(({ story, cell }, i) => ({
         <div class="dk-cord-label" id="dk-cord-label">TURN LAMP ON</div>
       </div>
 
+      </div><!-- /.dk-stage -->
+
       {/* The desk holds a finite number of prints. Extras are never dropped
           silently — they say so, on the site, where it will actually be seen. */}
       {overflow.length > 0 && (
@@ -276,9 +284,24 @@ const prints = placed.map(({ story, cell }, i) => ({
       // Ported 1:1 from the design handoff's DCLogic component.
       // (data-noflip on the element is the single source of flippability.)
       const desk = document.getElementById('dk')!;
+      const stage = document.getElementById('dk-stage')!;
+
+      // Fit the 1440×820 design canvas into whatever window we're given. The
+      // composition is authored once and scaled — never re-flowed — so two
+      // prints can never end up on top of each other on a narrower screen.
+      const STAGE_W = 1440, STAGE_H = 820;
+      const fitStage = () => {
+        const scale = Math.min(desk.clientWidth / STAGE_W, desk.clientHeight / STAGE_H);
+        desk.style.setProperty('--dk-scale', String(scale));
+        // Centre the scaled canvas in the leftover space.
+        stage.style.left = `${Math.max(0, (desk.clientWidth - STAGE_W * scale) / 2)}px`;
+        stage.style.top = `${Math.max(0, (desk.clientHeight - STAGE_H * scale) / 2)}px`;
+      };
+      fitStage();
+      addEventListener('resize', fitStage);
       const items = [...document.querySelectorAll<HTMLElement>('.dk-item')];
       let saved: Record<string, { x: number; y: number }> = {};
-      try { saved = JSON.parse(localStorage.getItem('aryan-desk-v4') || '{}'); } catch {}
+      try { saved = JSON.parse(localStorage.getItem('aryan-desk-v5') || '{}'); } catch {}
       const pos: Record<string, { x: number; y: number }> = {};
       const flipped: Record<string, boolean> = {};
       let top = items.length + 10;
@@ -311,7 +334,9 @@ const prints = placed.map(({ story, cell }, i) => ({
         el.addEventListener('pointerdown', (e: PointerEvent) => {
           if (e.button !== 0) return;
           if ((e.target as HTMLElement).closest('.dk-open, .dk-unflip')) return; // their own handlers
-          const rect = desk.getBoundingClientRect();
+          // Measure the STAGE, not the desk: its rect is already scaled, so
+          // percentage maths stays correct at any zoom level.
+          const rect = stage.getBoundingClientRect();
           const start = { ...pos[id] };
           const sx = e.clientX, sy = e.clientY;
           let lastX = e.clientX, moved = false;
@@ -341,7 +366,7 @@ const prints = placed.map(({ story, cell }, i) => ({
               if (open) open.click();
               else { flipped[id] = !flipped[id]; apply(el); }
             }
-            else if (moved) { try { localStorage.setItem('aryan-desk-v4', JSON.stringify(pos)); } catch {} }
+            else if (moved) { try { localStorage.setItem('aryan-desk-v5', JSON.stringify(pos)); } catch {} }
           };
           window.addEventListener('pointermove', mv);
           window.addEventListener('pointerup', up);
@@ -401,6 +426,10 @@ const prints = placed.map(({ story, cell }, i) => ({
       @keyframes cord-sway { 0%, 100% { transform: rotate(-1.6deg); } 50% { transform: rotate(1.6deg); } }
 
       .dk { position: relative; margin-top: 52px; height: calc(100vh - 52px); min-height: 780px; overflow: hidden; background: var(--desk); box-shadow: inset 0 0 180px rgba(12, 7, 2, 0.5); }
+      /* The design canvas. Everything inside is composed against exactly
+         1440×820 and the whole thing is scaled to fit, so prints keep their
+         relative positions at any window size and can never pile up. */
+      .dk-stage { position: absolute; left: 0; top: 0; width: 1440px; height: 820px; transform-origin: top left; transform: scale(var(--dk-scale, 1)); }
       .dk-lamp { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(1500px 960px at 50% -8%, rgba(255, 195, 115, 0.22), transparent 74%); opacity: 0.3; transition: opacity 1.2s ease; }
       body[data-theme='dark'] .dk-lamp { opacity: 1; }
       .dk-wood { position: absolute; inset: 0; pointer-events: none; opacity: 0.5; mix-blend-mode: multiply; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='420'%3E%3Cfilter id='w'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.004 0.12' numOctaves='5'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23w)' opacity='0.55'/%3E%3C/svg%3E"); }
