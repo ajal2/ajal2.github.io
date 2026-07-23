@@ -53,7 +53,7 @@
      these rather than inventing a px value. (The desk's tiny skeuomorphic
      labels predate the scale and keep their own sizes.) */
   --text-hero: clamp(30px, 5vw, 44px);      /* the 404 code, big moments */
-  --text-display: clamp(28px, 3.5vw, 38px); /* page H1 (The Files, story) */
+  --text-display: clamp(28px, 3.5vw, 38px); /* page H1 — SHARED by 4 page heads (story, Files, tag, desk letterhead); to resize one, change its selector, not this token */
   --text-title: clamp(24px, 4vw, 32px);     /* a page/article title (project) */
   --text-subtitle: clamp(19px, 2.2vw, 23px);/* section label within a page */
   --text-lead: 18px;                        /* the one-line summary */

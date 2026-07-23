@@ -1,0 +1,19 @@
+---
+description: Canonical project rules for ajal2.github.io
+alwaysApply: true
+---
+
+Read `AGENTS.md` (repo root) and `agent/STATE.md` first — they are the full,
+canonical instructions and the "where we left off" snapshot. The essentials:
+
+- **Notion is the content.** Every story is a Notion row, mirrored into
+  `src/content/stories/*.md` + `public/photos/` by `agent/sync-stories.mjs`. Those
+  files are generated — never hand-edit them to change content, never add a page
+  to publish. Publishing is ticking a checkbox in Notion, not editing this repo.
+- **Public repo — never `git add -A`.** Unpublished rows are untracked local files
+  that may hold unscrubbed client material. Stage explicit paths and leak-check:
+  `git diff --cached --name-only | grep -E '^(src/content/stories/|public/photos/|\.env)'`
+- **Don't break the invariants** in AGENTS.md (desk placement by seniority,
+  permissive schema, tokens imported once in Head.astro, `sharp` stays a declared
+  dep). `npm test` guards the desk-placement one.
+- Validate with `npm run build` (green = the bar) and `npm test`.

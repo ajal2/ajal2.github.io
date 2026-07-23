@@ -24,14 +24,23 @@ Run workflow**.
 
 ## Where it shows up
 
-| You tick / fill | Where it appears |
+**`Live` is the master switch.** An un-Live row is never mirrored, so `On desk`
+and `Tags` do nothing on their own — tick `Live` first, then:
+
+| Also tick / fill | Where it appears (once `Live`) |
 |---|---|
-| `Live` | `/files/` — the index of everything |
+| _nothing else_ | `/files/` — the index of everything |
 | `On desk` | a polaroid on the homepage desk, **placed automatically** |
 | a `Tags` value | that tag's section, e.g. `Experience` → `/experience/` |
 
+> The single most common "why isn't it showing?" is a row that's `On desk` but
+> not `Live`. On desk without Live = invisible.
+
 Tags build the sections. Invent a new tag in Notion and a new section and nav
-link appear by themselves. Nothing to configure.
+link appear by themselves. Nothing to configure — but a tag joins a section only
+on an **exact** text match: `Case Study` and `case study` become two different
+sections whose URLs collide (`/case-study/`), which breaks the build. Reuse the
+existing spelling.
 
 The desk holds 8 prints. Tick a 9th and nothing breaks — the extras show up as
 a **"+N more prints — in the files"** chit on the desk, linking to `/files/`.
@@ -112,6 +121,32 @@ It refuses to run in CI, and a later CI sync prunes the extra files.
   cell if a specific spot ever matters.
 - `agent/DESIGN_GUIDE.md` — colours and type. `agent/STYLE_GUIDE.md` — writing
   voice.
+
+## Extending the sync (adding a field)
+
+Each Notion property is read by a typed helper in `sync-stories.mjs` (`prop.*`).
+Use the one that matches the property's Notion **type**, or you get `undefined`
+back with no error:
+
+| Notion property | Type | Reader |
+|---|---|---|
+| Name | title | `prop.title` |
+| Slug, Stamp, Card line, Flip note, Proof N caption | rich_text | `prop.rich` |
+| Org | select | `prop.select` |
+| Tags | multi_select | `prop.multi` |
+| Live, On desk | checkbox | `prop.check` |
+| Period | date | `prop.date` |
+| Photo, Proof 1, Proof 2 | files | `prop.file` |
+
+To add a field end to end: read it in the row loop, add it to the `story`
+object, add it to `frontmatter()`, add it to the zod schema in
+`story-schema.mjs` (**optional**, per the permissive rule), then use it in the
+page template. Validate with `npm run build`.
+
+**Gotcha:** a `select`/`status` type change is guarded, but **renaming a
+checkbox column** (`Live`, `On desk`) is not — `prop.check` just returns `false`
+and the row silently drops off the site with nothing in the logs. If a print
+vanishes for no reason, check the Notion column names first.
 
 ## The safety net
 

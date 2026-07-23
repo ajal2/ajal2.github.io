@@ -25,11 +25,12 @@ src/styles/tokens.css        the design system (Fraunces + Courier Prime)
 
 ## How updates work
 
-- **Publish a story**: tick `Live` on the row in Notion. The sync picks it up on
-  the next run (02:43 / 14:43 UTC) or immediately via Actions → "Stories sync" →
-  Run workflow. Untick to take it down.
-- **Feature it on the desk**: tick `On desk`. The position is assigned
-  automatically — a new story never moves the prints already there.
+- **Publish a story**: tick `Live` on the row in Notion. `Live` is the master
+  switch — an un-Live row is never mirrored, so nothing else takes effect until
+  it's ticked. The sync picks it up on the next run (02:43 / 14:43 UTC) or
+  immediately via Actions → "Stories sync" → Run workflow. Untick to take it down.
+- **Feature it on the desk**: tick `On desk` (on a `Live` row). The position is
+  assigned automatically — a new story never moves the prints already there.
 - **Add a section**: add a `Tag`. `/experience/`, `/case-study/` etc. and their
   nav links are generated from whatever tags exist.
 - **Change the code**: push to `main` → Actions builds and deploys.
