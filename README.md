@@ -14,13 +14,13 @@ in this repo is edited to put something on the site. Full runbook:
 src/content/stories/*.md     the Notion mirror (generated, never hand-edited)
 public/photos/stories/       story photos, resized to webp by the sync
 agent/sync-stories.mjs       the whole pipeline: Notion → markdown + photos
-agent/story-schema.mjs       the field contract (deliberately permissive)
+agent/story-schema.mjs       the field contract (kept loose on purpose)
 src/pages/index.astro        the desk homepage
 src/pages/[tag]/index.astro  a section per Notion tag, generated from the data
 src/data/desk-slots.json     desk positions only, no story names
 src/lib/desk.mjs             deals prints into those positions by seniority
 src/styles/tokens.css        the design system (Fraunces + Courier Prime)
-.github/workflows/           deploy.yml (push → Pages) · stories-sync.yml (2×/day + manual)
+.github/workflows/           deploy.yml (push to Pages), stories-sync.yml (2x/day + manual)
 ```
 
 ## How updates work
