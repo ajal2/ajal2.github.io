@@ -3,7 +3,7 @@ slug: "deloitte-inventory"
 name: "Inventory audit — finding stock nobody had counted"
 tags: ["Case Study"]
 org: "Deloitte"
-stamp: "VADODARA ’26"
+stamp: "INDIA ’26"
 periodStart: 2026-03-01
 periodEnd: 2026-04-30
 printCaption: "Auditing inventory at a manufacturing plant"
